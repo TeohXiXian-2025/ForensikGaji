@@ -1,10 +1,10 @@
 # 🔍 ForensikGaji: Sovereign Digital Document Defense
 
-[![Deployed on Google Cloud Run](https://img.shields.io/badge/Deployed_on-Google_Cloud_Run-blue?logo=googlecloud)](https://forensikgaji-frontend-163354028310.asia-southeast1.run.app)
+[![Deployed on Google Cloud Run](https://img.shields.io/badge/Deployed_on-Google_Cloud_Run-blue?logo=googlecloud)](https://forensikgaji-frontend-381516681695.asia-southeast1.run.app)
 [![Powered by Gemini](https://img.shields.io/badge/Powered_by-Google_Gemini-orange?logo=google)](https://ai.google.dev/)
 [![Track: Secure Digital](https://img.shields.io/badge/Track-Secure_Digital-success)](#)
 
-**🚨 LIVE APPLICATION:** [Click here to launch the ForensikGaji Portal](https://forensikgaji-frontend-163354028310.asia-southeast1.run.app)  
+**🚨 LIVE APPLICATION:** [Launch the ForensikGaji Forensic Portal](https://forensikgaji-frontend-381516681695.asia-southeast1.run.app)  
 
 ForensikGaji is an AI-powered forensic document auditing platform engineered for **Project 2030: MyAI Future Hackathon**. Designed to tackle **Track 5: Secure Digital**, this platform protects the integrity of the Malaysian digital economy by verifying professional and financial documents (payslips, medical certificates, receipts) against pixel-level manipulation and semantic fraud.
 
@@ -36,6 +36,22 @@ When a document is uploaded, it triggers a multi-stage autonomous pipeline:
 2. **Extraction:** **Google Cloud Document AI (OCR)** parses the raw text and spatial coordinates.
 3. **Vision Layer:** Python/OpenCV processes the raw bytes to generate the ELA Heatmap.
 4. **Agentic Layer:** **Google Gemini API** ingests the OCR data and metadata to perform reasoning, logic checks, and final scoring.
+
+---
+
+## 📂 Project Structure
+
+The project is organized to separate business logic from UI components and static data:
+
+```text
+├── frontend/                # React + Vite Application
+│   ├── src/
+│   │   ├── App.jsx          # Main application logic & routing
+│   │   └── constants.js     # Decoupled mock data & configurations
+├── server/                  # FastAPI Backend
+│   ├── main.py              # API entry point
+│   └── services/            # Forensic AI & Vision logic
+```
 
 ---
 
