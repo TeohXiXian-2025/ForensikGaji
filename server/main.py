@@ -1,6 +1,4 @@
 import os
-print("--- DEBUG: FILES IN CONTAINER ---")
-print(os.listdir('.'))
 import traceback
 import base64
 from dotenv import load_dotenv
@@ -62,10 +60,10 @@ async def scan_document_endpoint(file: UploadFile = File(...)):
 
         print("Generating ELA Heatmap...")
         try:
-            # 🟢 Catch BOTH perfectly stitched multi-page images
+            # Catch BOTH perfectly stitched multi-page images
             original_b64, heatmap_b64 = generate_ela_heatmap(file_bytes, mime_type)
         except Exception as heatmap_err:
-            print(f"⚠️ Heatmap skipped (Likely Poppler missing on your PC): {heatmap_err}")
+            print(f"⚠️ Heatmap skipped: {heatmap_err}")
             raw_b64 = base64.b64encode(file_bytes).decode("utf-8")
             original_b64 = f"data:{mime_type};base64,{raw_b64}"
             heatmap_b64 = None

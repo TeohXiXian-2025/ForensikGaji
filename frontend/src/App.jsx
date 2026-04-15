@@ -61,7 +61,9 @@ export default function App() {
                   }
                 });
                 
-                const lowestScore = mergedFiles.length > 0 ? Math.min(...mergedFiles.map(f => f.score)) : 100;
+                const avgScore = mergedFiles.length > 0 
+                  ? Math.round(mergedFiles.reduce((acc, f) => acc + f.score, 0) / mergedFiles.length) 
+                  : 100;
                 
                 return {
                   ...c, 
@@ -69,7 +71,7 @@ export default function App() {
                   data: {
                     ...c.data,
                     ...payload.data,
-                    score: lowestScore === 100 ? 0 : lowestScore,
+                    score: avgScore === 100 && mergedFiles.length === 0 ? 0 : avgScore,
                     files: mergedFiles
                   }
                 };
@@ -103,7 +105,6 @@ export default function App() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isClosed, setIsClosed] = useState(false); 
   
-  // 🟢 Session state for candidate privacy
   const [sessionUploadedFiles, setSessionUploadedFiles] = useState([]);
   
   const [bookingExpert, setBookingExpert] = useState(null);
@@ -127,13 +128,23 @@ export default function App() {
   
   const claimBoxRef = useRef(null);
 
+ // 🟢 NEW: Auto-Aim the yellow box when opening a report
   useEffect(() => {
-    if (activeAnomaly !== null && claimBoxRef.current) {
-      setTimeout(() => {
-        claimBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+    if (selectedContainer && viewMode === 'original') {
+      const report = selectedContainer.data;
+      if (Array.isArray(report?.files) && report.files.length > 0) {
+        const activeFile = report.files[selectedFileIndex] || report.files[0];
+        
+        // Find the first claim that actually has a location on the document
+        if (Array.isArray(activeFile.flagged_claims)) {
+          const firstValidIndex = activeFile.flagged_claims.findIndex(c => !c.box_hidden);
+          if (firstValidIndex !== -1) {
+            setActiveAnomaly(firstValidIndex);
+          }
+        }
+      }
     }
-  }, [activeAnomaly, viewMode]);
+  }, [selectedContainer, selectedFileIndex, viewMode]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -243,7 +254,6 @@ export default function App() {
 
     try {
       const uploadedFilesData = [];
-      let lowestScore = 100;
 
       for (const file of filesToProcess) {
         const formData = new FormData();
@@ -264,9 +274,11 @@ export default function App() {
           heatmap: result.ela_heatmap_base64,
           original: result.original_document_base64
         });
-
-        if (result.fraud_probability_score < lowestScore) lowestScore = result.fraud_probability_score;
       }
+
+      const avgScore = uploadedFilesData.length > 0 
+        ? Math.round(uploadedFilesData.reduce((acc, f) => acc + f.score, 0) / uploadedFilesData.length)
+        : 0;
 
       setContainers(prev => {
         const safePrev = Array.isArray(prev) ? prev : [];
@@ -276,7 +288,7 @@ export default function App() {
               ...c,
               status: 'completed',
               data: {
-                score: lowestScore === 100 && uploadedFilesData.length === 0 ? 0 : lowestScore,
+                score: avgScore,
                 date: new Date().toLocaleDateString(),
                 clash_detected: false,
                 files: uploadedFilesData
@@ -343,7 +355,6 @@ export default function App() {
         if (result.fraud_probability_score < 40) anyFraud = true;
       }
 
-      // Add to session list for Candidate Privacy View
       setSessionUploadedFiles(prev => [...prev, ...uploadedFilesData]);
 
       setContainers(prev => {
@@ -355,14 +366,17 @@ export default function App() {
             uploadedFilesData.forEach(nf => {
                if (!mergedFiles.find(of => of.name === nf.name)) mergedFiles.push(nf);
             });
-            const newLowestScore = mergedFiles.length > 0 ? Math.min(...mergedFiles.map(f => f.score)) : 100;
+            
+            const newAvgScore = mergedFiles.length > 0 
+                ? Math.round(mergedFiles.reduce((acc, f) => acc + f.score, 0) / mergedFiles.length) 
+                : 100;
 
             return {
               ...c,
               status: 'completed',
               data: {
                 ...c.data,
-                score: newLowestScore === 100 && mergedFiles.length === 0 ? 0 : newLowestScore,
+                score: newAvgScore === 100 && mergedFiles.length === 0 ? 0 : newAvgScore,
                 date: new Date().toLocaleDateString(),
                 clash_detected: false, 
                 files: mergedFiles
@@ -447,31 +461,42 @@ export default function App() {
           <ul style="list-style-type: none; padding-left: 0;">
             ${f.flagged_claims.map(c => `
               <li style="background: #fff; padding: 15px; border-left: 4px solid #facc15; margin-bottom: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <div style="font-family: monospace; font-size: 12px; background: #fef9c3; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px;">Extract: "${c.claim}"</div>
-                <p style="margin: 0; color: #b91c1c;"><strong>HR Note:</strong> ${c.hr_note}</p>
+                <div style="font-family: monospace; font-size: 12px; background: #fef9c3; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px;">Target: "${c.claim}"</div>
+                <p style="margin: 0; color: #b91c1c;"><strong>Forensic Note:</strong> ${c.hr_note}</p>
               </li>
             `).join('')}
           </ul>
         ` : '<p style="color: #64748b; font-style: italic;">No anomalies detected in this document.</p>'}
 
-        ${f.original && (f.original.startsWith('data:image') || (f.original.startsWith('http') && !f.original.endsWith('.pdf'))) ? `
-          <div style="margin-top: 30px; text-align: center; page-break-inside: avoid;">
-            <h4 style="color: #334155; margin-bottom: 10px;">Original Document Capture</h4>
-            <img src="${f.original}" style="max-width: 100%; max-height: 800px; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);" />
-          </div>
-        ` : f.original && (f.original.startsWith('data:application/pdf') || f.original.endsWith('.pdf')) ? `
-          <div style="margin-top: 30px; padding: 15px; background: #e2e8f0; border-radius: 8px; text-align: center;">
-            <p style="margin: 0; color: #475569;"><strong>📄 PDF Document:</strong> Attached in digital vault. Preview natively omitted from print layout.</p>
-          </div>
-        ` : ''}
-
         ${f.heatmap ? `
           <div style="margin-top: 30px; text-align: center; page-break-inside: avoid;">
-            <h4 style="color: #ef4444; margin-bottom: 10px;">Forensic ELA Heatmap (Tampering Highlighted)</h4>
-            <img src="${f.heatmap}" style="max-width: 100%; max-height: 800px; border: 2px solid #ef4444; border-radius: 8px; box-shadow: 0 4px 6px rgba(239,68,68,0.2);" />
+            <h4 style="color: #ef4444; margin-bottom: 10px; font-size: 18px;">Forensic ELA Heatmap (Tampering Highlighted)</h4>
+            
+            <div style="background: #fff; border: 2px solid #ef4444; border-radius: 8px; padding: 15px; display: inline-block; box-shadow: 0 4px 6px rgba(239,68,68,0.1); width: 100%; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #fee2e2; padding-bottom: 10px;">
+                    <div style="text-align: left;">
+                        <span style="font-size: 11px; color: #991b1b; font-weight: bold; display: block; text-transform: uppercase;">Analysis Type: Error Level Analysis (ELA)</span>
+                        <span style="font-size: 10px; color: #ef4444;">Compression Baseline: 90%</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 11px; color: #991b1b; font-weight: bold; display: block; text-transform: uppercase;">Legend / Key</span>
+                        <span style="font-size: 11px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Tampered Region</span>
+                    </div>
+                </div>
+
+                <div style="position: relative; display: block; width: 100%; margin: 0 auto;">
+                    <img src="${f.heatmap}" style="width: 100%; height: auto; display: block; border-radius: 4px; border: 1px solid #cbd5e1;" />
+                </div>
+                
+                <p style="font-size: 10px; color: #ef4444; margin-top: 10px; font-style: italic;">Note: Highlights indicate pixel compression inconsistencies commonly caused by digital splicing or copy-pasting new text over original documents.</p>
+            </div>
+          </div>
+        ` : f.original ? `
+           <div style="margin-top: 30px; text-align: center; page-break-inside: avoid;">
+            <h4 style="color: #334155; margin-bottom: 10px;">Original Document Scan</h4>
+            <img src="${f.original}" style="max-width: 100%; border: 1px solid #cbd5e1; border-radius: 8px;" />
           </div>
         ` : ''}
-
       </div>
     `).join('');
 
@@ -495,19 +520,12 @@ export default function App() {
           <div class="header">
             <h1 style="margin-bottom: 5px;">ForensikGaji <span style="color: #4f46e5;">Audit Report</span></h1>
             <p style="color: #64748b; margin-top: 0;">Generated on ${new Date().toLocaleDateString()}</p>
-            
             <h2 style="margin-top: 30px;">Candidate: ${selectedContainer.name}</h2>
             <div style="display: flex; align-items: center; margin-top: 10px;">
               <span style="font-size: 18px; font-weight: bold; margin-right: 10px;">Overall Trust Score:</span>
               <span class="score">${report.score}%</span>
               <span class="badge ${report.score < 40 ? 'badge-red' : 'badge-green'}">${report.score < 40 ? 'CRITICAL FRAUD DETECTED' : 'AUTHENTIC'}</span>
             </div>
-            ${report.clash_detected ? `
-              <div style="background: #fff7ed; border: 2px solid #fb923c; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                <h3 style="color: #c2410c; margin-top: 0;">Logic Contradiction Found</h3>
-                <p style="color: #7c2d12; margin: 0;">${report.clash_details}</p>
-              </div>
-            ` : ''}
           </div>
           ${fileDetails}
           <p style="text-align: center; color: #94a3b8; margin-top: 40px; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 20px;">Secured by ForensikGaji Sovereign Forensic Layer</p>
@@ -519,7 +537,7 @@ export default function App() {
     setTimeout(() => {
       printWindow.print();
       setIsExportingPDF(false);
-      setToastMessage(`✅ Forensic Report for ${selectedContainer.name} generated successfully.`);
+      setToastMessage(`✅ Forensic Report generated successfully.`);
       setTimeout(() => setToastMessage(null), 5000);
     }, 1000);
   };
@@ -724,7 +742,6 @@ export default function App() {
                  <p className="text-slate-500 text-sm">Select all documents belonging to this case. They will be processed together immediately.</p>
               </div>
 
-              {/* 🟢 UI FIX: Moved the direct upload file list OUTSIDE the drag and drop box! */}
               {directFiles.length > 0 && (
                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm w-full text-left">
                    <p className="font-bold text-sm text-slate-700 mb-2 border-b pb-2">Selected Files ({directFiles.length}):</p>
@@ -781,12 +798,10 @@ export default function App() {
       <div className="space-y-4">
         {safeContainers.map((c) => (
           <div key={c.id} className="bg-white rounded-xl shadow-sm border p-6 flex flex-col md:flex-row justify-between gap-6 transition-all hover:shadow-md">
-            
             <div className="flex-1 min-w-0 w-full md:pr-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-bold text-slate-400 uppercase">{c.id}</span>
-                  
                   <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                     c.status === 'waiting' ? 'bg-amber-100 text-amber-700' : 
                     c.status === 'processing' ? 'bg-blue-100 text-blue-700 animate-pulse' :
@@ -794,12 +809,10 @@ export default function App() {
                   }`}>
                     {c.status === 'waiting' ? 'Waiting for Candidate' : c.status === 'processing' ? 'Analyzing Files...' : 'Analysis Complete'}
                   </span>
-                  
                   {c.data?.clash_detected && (
                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white uppercase animate-pulse shadow-sm">Clash Detected</span>
                   )}
                 </div>
-                
                 <div className="flex items-center space-x-1">
                   <button onClick={() => openRenameModal(c.id, c.name)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Rename Case">
                     <Edit className="w-4 h-4" />
@@ -809,9 +822,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              
               <h3 className="text-xl font-bold text-slate-900">{c.name}</h3>
-              
               {c.status === 'completed' && Array.isArray(c.data?.files) && c.data.files.length > 0 ? (
                 <div className="mt-4 flex flex-col gap-2 max-w-xl">
                   {c.data.files.map((file, idx) => (
@@ -834,20 +845,17 @@ export default function App() {
                 <p className="text-slate-500 text-sm mt-1">{c.type}</p>
               )}
             </div>
-            
             {(c.status === 'waiting' || c.status === 'completed') && (
               <div className="flex items-center h-fit self-center space-x-2 bg-slate-50 border p-2 rounded-lg mt-2 md:mt-0 flex-shrink-0">
                 <button onClick={() => { setActiveCandidateUploadId(c.id); setActiveTab('candidate_portal'); }} className="text-blue-600 font-mono text-sm underline truncate max-w-[200px]" title={c.link}>{c.link}</button>
                 <button onClick={() => copyToClipboard(c.link)} className="p-1 hover:bg-slate-200 rounded text-slate-400"><Copy className="w-4 h-4" /></button>
               </div>
             )}
-            
             {c.status === 'processing' && (
               <div className="flex items-center h-fit self-center px-4 flex-shrink-0">
                 <Activity className="w-6 h-6 text-blue-500 animate-spin" />
               </div>
             )}
-
             {c.status === 'completed' && (
               <div className="flex items-center h-fit self-center md:mt-8 flex-shrink-0">
                 <button onClick={() => { setSelectedContainer(c); setViewMode('original'); setSelectedFileIndex(0); setActiveAnomaly(null); }} className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold transition-colors shadow-sm whitespace-nowrap">View Report</button>
@@ -865,11 +873,7 @@ export default function App() {
       <p className="text-slate-500 mb-10 text-lg">Hire verified industry professionals to conduct technical interviews for your candidates.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {expertDatabase.map(expert => (
-          <div 
-            key={expert.id} 
-            onClick={() => setSelectedExpertDetail(expert)} 
-            className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
-          >
+          <div key={expert.id} onClick={() => setSelectedExpertDetail(expert)} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer">
             <div className="flex items-center space-x-4 mb-4">
               <img src={expert.image} alt={expert.name} className="w-16 h-16 rounded-full object-cover border border-slate-200" />
               <div>
@@ -886,17 +890,10 @@ export default function App() {
             <div className="flex flex-wrap gap-2 mb-6 flex-1">
               {expert.skills.map(s => <span key={s} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-xs font-medium rounded-md">{s}</span>)}
             </div>
-            
             <p className="text-xs text-slate-400 mb-4 text-center italic font-medium">Click card to view full profile</p>
-
             <div className="flex items-center justify-between pt-5 border-t border-slate-100 mt-auto">
               <div className="flex items-center text-slate-700 font-bold text-base"><Clock className="w-4 h-4 mr-1.5 text-slate-400" /> {expert.rate}</div>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setBookingExpert(expert); }} 
-                className="bg-[#4f46e5] hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
-              >
-                Book Interview
-              </button>
+              <button onClick={(e) => { e.stopPropagation(); setBookingExpert(expert); }} className="bg-[#4f46e5] hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors">Book Interview</button>
             </div>
           </div>
         ))}
@@ -910,19 +907,8 @@ export default function App() {
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Become an Expert Auditor</h1>
         <p className="text-slate-500 mt-2 text-lg">Join our vetted marketplace of elite technical interviewers and help secure the hiring ecosystem.</p>
       </div>
-
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 max-w-2xl">
-        <form 
-          onSubmit={(e) => { 
-            e.preventDefault(); 
-            setRegistrationSuccess(true);
-            setTimeout(() => {
-              setRegistrationSuccess(false);
-              setActiveTab('marketplace'); 
-            }, 3000);
-          }} 
-          className="space-y-6"
-        >
+        <form onSubmit={(e) => { e.preventDefault(); setRegistrationSuccess(true); setTimeout(() => { setRegistrationSuccess(false); setActiveTab('marketplace'); }, 3000); }} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
@@ -933,17 +919,14 @@ export default function App() {
                 <input type="text" required placeholder="e.g., Lead Engineer" className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
           </div>
-          
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Company / Institution</label>
             <input type="text" required placeholder="e.g., TechCorp Malaysia" className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
-
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Primary Expertise (Comma separated)</label>
             <input type="text" required placeholder="e.g., Java, Data Science, System Architecture" className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Desired Hourly Rate (RM)</label>
@@ -954,10 +937,7 @@ export default function App() {
               <input type="url" required placeholder="https://linkedin.com/in/..." className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
           </div>
-
-          <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl mt-6 transition-colors shadow-lg">
-            Submit Application
-          </button>
+          <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl mt-6 transition-colors shadow-lg">Submit Application</button>
         </form>
       </div>
     </div>
@@ -965,208 +945,82 @@ export default function App() {
 
   const renderCandidatePortalView = () => {
     const activeContainer = safeContainers.find(c => c && c.id === activeCandidateUploadId);
-    
-    if (!activeContainer) {
-      return (
-        <div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center">
-          <Activity className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-          <h2 className="text-xl font-bold text-slate-700">Connecting to HR Dashboard...</h2>
-        </div>
-      );
-    }
-    
-    if (isClosed) {
-      return (
-        <div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 p-10 text-center animate-in fade-in zoom-in duration-300">
-            <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-6" />
-            <h2 className="text-2xl font-black text-slate-900 mb-4">Upload Securely Transmitted</h2>
-            <p className="text-slate-500 mb-8 font-medium">Your documents have been actively synced to the HR dashboard.</p>
-            <div className="bg-slate-100 rounded-xl p-4 border border-slate-200">
-              <p className="text-slate-700 font-bold">You may now safely close this browser tab.</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center">
-        <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 p-10 text-center">
-          <h2 className="text-2xl font-bold text-slate-900 mb-8">Secure Document Upload</h2>
-          
-          {uploadSuccess ? (
-            <div className="py-6 flex flex-col items-center bg-green-50 rounded-xl mb-4 border border-green-200">
-              <CheckCircle className="w-10 h-10 text-green-600 mb-2" />
-              <h3 className="text-lg font-bold text-slate-800">Files successfully added!</h3>
-              <p className="text-slate-500 text-sm">You can select more files or click finish below.</p>
-            </div>
-          ) : null}
-
-          {/* 🟢 PRIVACY FIX: Now uses sessionUploadedFiles to hide past uploads! */}
-          {sessionUploadedFiles.length > 0 && (
-             <div className="mb-6 text-left bg-slate-50 p-4 rounded-xl border border-slate-200 max-h-32 overflow-y-auto">
-               <p className="font-bold text-sm text-slate-700 mb-2 border-b pb-2">Documents Uploaded to HR:</p>
-               {sessionUploadedFiles.map((f, i) => (
-                 <div key={i} className="flex items-center text-xs text-slate-600 mt-1.5">
-                    <CheckCircle className="w-3.5 h-3.5 text-green-500 mr-2 flex-shrink-0" /> <span className="truncate font-medium">{f.name}</span>
-                 </div>
-               ))}
-             </div>
-          )}
-
-          {isUploading ? (
-            <div className="py-12 flex flex-col items-center">
-              <Activity className="w-12 h-12 text-blue-600 animate-pulse mb-4" />
-              <p className="font-bold text-slate-700">Analyzing Document Integrity...</p>
-            </div>
-          ) : (
-            <div onClick={() => document.getElementById('fileInput').click()} className="border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-2xl p-12 cursor-pointer hover:bg-blue-50 transition-colors">
-              <input id="fileInput" type="file" multiple className="hidden" onChange={handleCandidateUpload} onClick={(e) => e.stopPropagation()} />
-              <FileDown className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-slate-800">Click to select files</h3>
-              <p className="text-slate-500 text-xs">You can select multiple documents at once.</p>
-            </div>
-          )}
-          
-          {!isUploading && (
-            <button onClick={() => {
-                if (!isExternalLink) {
-                    setActiveTab('scanner');
-                    setActiveCandidateUploadId(null);
-                    window.history.replaceState(null, '', window.location.pathname); 
-                } else {
-                    setIsClosed(true);
-                }
-            }} className="mt-8 bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-md hover:bg-slate-800">
-              {isExternalLink ? "Finish and Close Tab" : "Finish and Return"}
-            </button>
-          )}
-        </div>
-      </div>
-    );
+    if (!activeContainer) return (<div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center"><Activity className="w-12 h-12 text-blue-600 animate-spin mb-4" /><h2 className="text-xl font-bold text-slate-700">Connecting to HR Dashboard...</h2></div>);
+    if (isClosed) return (<div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 p-10 text-center animate-in fade-in zoom-in duration-300"><CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-900 mb-4">Upload Securely Transmitted</h2><p className="text-slate-500 mb-8 font-medium">Your documents have been actively synced to the HR dashboard.</p><div className="bg-slate-100 rounded-xl p-4 border border-slate-200"><p className="text-slate-700 font-bold">You may now safely close this browser tab.</p></div></div></div>);
+    return (<div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 p-10 text-center"><h2 className="text-2xl font-bold text-slate-900 mb-8">Secure Document Upload</h2>{uploadSuccess && <div className="py-6 flex flex-col items-center bg-green-50 rounded-xl mb-4 border border-green-200"><CheckCircle className="w-10 h-10 text-green-600 mb-2" /><h3 className="text-lg font-bold text-slate-800">Files successfully added!</h3><p className="text-slate-500 text-sm">You can select more files or click finish below.</p></div>}{sessionUploadedFiles.length > 0 && <div className="mb-6 text-left bg-slate-50 p-4 rounded-xl border border-slate-200 max-h-32 overflow-y-auto"><p className="font-bold text-sm text-slate-700 mb-2 border-b pb-2">Documents Uploaded to HR:</p>{sessionUploadedFiles.map((f, i) => (<div key={i} className="flex items-center text-xs text-slate-600 mt-1.5"><CheckCircle className="w-3.5 h-3.5 text-green-500 mr-2 flex-shrink-0" /> <span className="truncate font-medium">{f.name}</span></div>))}</div>}{isUploading ? (<div className="py-12 flex flex-col items-center"><Activity className="w-12 h-12 text-blue-600 animate-pulse mb-4" /><p className="font-bold text-slate-700">Analyzing Document Integrity...</p></div>) : (<div onClick={() => document.getElementById('fileInput').click()} className="border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-2xl p-12 cursor-pointer hover:bg-blue-50 transition-colors"><input id="fileInput" type="file" multiple className="hidden" onChange={handleCandidateUpload} onClick={(e) => e.stopPropagation()} /><FileDown className="w-12 h-12 text-blue-600 mx-auto mb-4" /><h3 className="text-lg font-bold text-slate-800">Click to select files</h3><p className="text-slate-500 text-xs">You can select multiple documents at once.</p></div>)}{!isUploading && <button onClick={() => { if (!isExternalLink) { setActiveTab('scanner'); setActiveCandidateUploadId(null); window.history.replaceState(null, '', window.location.pathname); } else { setIsClosed(true); } }} className="mt-8 bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-md hover:bg-slate-800">{isExternalLink ? "Finish and Close Tab" : "Finish and Return"}</button>}</div></div>);
   };
 
   const renderSplitScreenModal = () => {
     if (!selectedContainer || !selectedContainer.data) return null;
     const report = selectedContainer.data;
-    
     if (!Array.isArray(report.files) || report.files.length === 0) return null;
-
     const activeFile = report.files[selectedFileIndex] || report.files[0];
     const isHighRisk = activeFile.score < 40;
     
+    // Check if it's a PDF to handle iframe height
     const isPdfPreview = viewMode === 'original' && (activeFile.original?.startsWith('data:application/pdf') || activeFile.original?.toLowerCase().endsWith('.pdf'));
 
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 lg:p-8">
         <div className="bg-white w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
           <div className="flex justify-between items-center px-8 py-5 border-b border-slate-200 bg-slate-50">
-            <div className="flex items-center space-x-4">
-              <div className={`p-2.5 rounded-xl ${isHighRisk ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                {isHighRisk ? <AlertTriangle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Audit Report: {selectedContainer.name}</h2>
-                <p className="text-slate-400 text-xs mt-0.5">Sovereign Forensic Layer v2.0</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <button 
-                onClick={handleExportPDF} 
-                disabled={isExportingPDF}
-                className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-bold text-sm shadow-sm disabled:opacity-50"
-              >
-                {isExportingPDF ? <Activity className="w-4 h-4 mr-2 animate-spin text-blue-600" /> : <Download className="w-4 h-4 mr-2" />}
-                {isExportingPDF ? 'Generating...' : 'Export PDF'}
-              </button>
-              <button onClick={() => { setSelectedContainer(null); setActiveAnomaly(null); }} className="p-2 hover:bg-slate-200 rounded-full text-slate-400"><X className="w-6 h-6" /></button>
-            </div>
+            <div className="flex items-center space-x-4"><div className={`p-2.5 rounded-xl ${isHighRisk ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>{isHighRisk ? <AlertTriangle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}</div><div><h2 className="text-xl font-bold text-slate-900">Audit Report: {selectedContainer.name}</h2><p className="text-slate-400 text-xs mt-0.5">Sovereign Forensic Layer v2.0</p></div></div>
+            <div className="flex items-center space-x-3"><button onClick={handleExportPDF} disabled={isExportingPDF} className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-bold text-sm shadow-sm disabled:opacity-50">{isExportingPDF ? <Activity className="w-4 h-4 mr-2 animate-spin text-blue-600" /> : <Download className="w-4 h-4 mr-2" />} {isExportingPDF ? 'Generating...' : 'Export PDF'}</button><button onClick={() => { setSelectedContainer(null); setActiveAnomaly(null); setViewMode('original'); }} className="p-2 hover:bg-slate-200 rounded-full text-slate-400"><X className="w-6 h-6" /></button></div>
           </div>
-
           <div className="flex flex-1 overflow-hidden">
             <div className="w-1/2 p-8 border-r border-slate-200 overflow-y-auto bg-white">
-              <div className="flex justify-between mb-8">
-                <div><p className="text-slate-500 font-medium mb-1">Document Trust</p><div className={`text-6xl font-black ${isHighRisk ? 'text-red-600' : 'text-green-600'}`}>{activeFile.score}%</div></div>
-                <div className="text-right"><p className="text-slate-500 font-medium mb-1">Status</p><div className={`px-4 py-1.5 rounded-full font-bold border ${isHighRisk ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>{isHighRisk ? 'FRAUD DETECTED' : 'AUTHENTIC'}</div></div>
-              </div>
-              
-              {report.clash_detected && (
-                <div className="p-5 bg-orange-50 border-2 border-orange-400 rounded-2xl mb-8 flex items-start space-x-4 shadow-sm animate-pulse">
-                  <div className="bg-orange-100 p-2 rounded-full">
-                    <AlertTriangle className="w-6 h-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-orange-800 uppercase tracking-wide text-sm mb-1">Logic Contradiction Found</h4>
-                    <p className="text-orange-900 font-medium text-sm leading-relaxed">{report.clash_details}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className={`p-6 rounded-2xl mb-8 border ${isHighRisk ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-200'}`}>
-                <h4 className="font-bold flex items-center mb-2 text-slate-800"><Activity className="w-5 h-5 mr-2 text-blue-600" /> AI Verdict</h4>
-                <p className="font-medium text-slate-700 leading-relaxed">{activeFile.issue}</p>
-              </div>
-              
+              <div className="flex justify-between mb-8"><div><p className="text-slate-500 font-medium mb-1">Document Trust</p><div className={`text-6xl font-black ${isHighRisk ? 'text-red-600' : 'text-green-600'}`}>{activeFile.score}%</div></div><div className="text-right"><p className="text-slate-500 font-medium mb-1">Status</p><div className={`px-4 py-1.5 rounded-full font-bold border ${isHighRisk ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>{isHighRisk ? 'FRAUD DETECTED' : 'AUTHENTIC'}</div></div></div>
+              <div className={`p-6 rounded-2xl mb-8 border ${isHighRisk ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-200'}`}><h4 className="font-bold flex items-center mb-2 text-slate-800"><Activity className="w-5 h-5 mr-2 text-blue-600" /> AI Verdict</h4><p className="font-medium text-slate-700 leading-relaxed">{activeFile.issue}</p></div>
               {Array.isArray(activeFile.flagged_claims) && activeFile.flagged_claims.map((claim, idx) => (
-                <div 
-                  key={idx} 
-                  onClick={() => setActiveAnomaly(activeAnomaly === idx ? null : idx)}
-                  className={`bg-white border rounded-xl p-5 shadow-sm mb-4 cursor-pointer transition-all ${activeAnomaly === idx ? 'ring-2 ring-yellow-400 border-yellow-400 scale-[1.02]' : 'border-slate-200 hover:border-blue-300'}`}
-                >
+                <div key={idx} onClick={() => setActiveAnomaly(activeAnomaly === idx ? null : idx)} className={`bg-white border rounded-xl p-5 shadow-sm mb-4 cursor-pointer transition-all ${activeAnomaly === idx ? 'ring-2 ring-yellow-400 border-yellow-400 scale-[1.02]' : 'border-slate-200 hover:border-blue-300'}`}>
                   <div className="bg-yellow-100 text-slate-800 font-mono text-xs px-2 py-1 rounded mb-3 inline-block font-bold">Extract: "{claim.claim}"</div>
-                  <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg"><span className="font-bold">Flag:</span> {claim.hr_note}</p>
-                  <p className="text-xs text-slate-400 mt-2 font-bold text-right hover:text-blue-500">Click to locate on document ➔</p>
+                  
+                  <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg mb-2">
+                    <span className="font-bold">Flag:</span> {claim.hr_note}
+                  </p>
+                  
+                  {/* 🟢 NEW: Renders the Interview Question generated by Gemini */}
+                  {claim.interview_question && (
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                      <p className="text-blue-800 text-sm">
+                        <span className="font-bold text-blue-900">Suggested Question:</span> {claim.interview_question}
+                      </p>
+                    </div>
+                  )}
+
+                  {!claim.box_hidden && <p className="text-xs text-slate-400 mt-3 font-bold text-right hover:text-blue-500">Click to locate on document ➔</p>}
                 </div>
               ))}
             </div>
-            
             <div className="w-1/2 bg-[#f8fafc] flex flex-col relative">
-              {Array.isArray(report.files) && <div className="bg-white border-b border-slate-200 px-4 pt-4 flex space-x-2 overflow-x-auto z-20 shadow-sm">
-                {report.files.map((f, idx) => (
-                  <button key={idx} onClick={() => { setSelectedFileIndex(idx); setViewMode('original'); setActiveAnomaly(null); }} className={`px-4 py-2.5 text-sm font-bold rounded-t-lg transition-colors border-t border-l border-r ${selectedFileIndex === idx ? 'bg-[#f8fafc] text-blue-600 border-slate-200' : 'bg-white text-slate-400 border-transparent hover:bg-slate-50'}`}>{typeof f === 'string' ? f : f.name}</button>
-                ))}
-              </div>}
-              
-              <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-white rounded-full p-1.5 shadow-md border border-slate-200 flex items-center z-10">
-                <button onClick={() => setViewMode('original')} className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-slate-800 text-white shadow' : 'text-slate-500'}`}><Eye className="w-4 h-4" /> <span>Original</span></button>
-                <button onClick={() => setViewMode('heatmap')} className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${viewMode === 'heatmap' ? 'bg-red-600 text-white shadow' : 'text-slate-500'}`}><Activity className="w-4 h-4" /> <span>Heatmap</span></button>
-              </div>
-              
+              {Array.isArray(report.files) && <div className="bg-white border-b border-slate-200 px-4 pt-4 flex space-x-2 overflow-x-auto z-20 shadow-sm">{report.files.map((f, idx) => (<button key={idx} onClick={() => { setSelectedFileIndex(idx); setViewMode('original'); setActiveAnomaly(null); }} className={`px-4 py-2.5 text-sm font-bold rounded-t-lg transition-colors border-t border-l border-r ${selectedFileIndex === idx ? 'bg-[#f8fafc] text-blue-600 border-slate-200' : 'bg-white text-slate-400 border-transparent hover:bg-slate-50'}`}>{typeof f === 'string' ? f : f.name}</button>))}</div>}
+              <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-white rounded-full p-1.5 shadow-md border border-slate-200 flex items-center z-10"><button onClick={() => setViewMode('original')} className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-slate-800 text-white shadow' : 'text-slate-500'}`}><Eye className="w-4 h-4" /> <span>Original</span></button><button onClick={() => setViewMode('heatmap')} className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${viewMode === 'heatmap' ? 'bg-red-600 text-white shadow' : 'text-slate-500'}`}><Activity className="w-4 h-4" /> <span>Heatmap Overlay</span></button></div>
               <div className="flex-1 flex flex-col items-center p-6 mt-6 overflow-y-auto bg-[#f8fafc] rounded-br-3xl">
-                <div className="relative w-full max-w-4xl mx-auto shadow-2xl border border-slate-300 group bg-white" style={{ height: isPdfPreview ? '800px' : 'max-content' }}>
+                
+                <div className="relative w-full max-w-3xl mx-auto shadow-xl border border-slate-300 bg-white rounded-xl flex flex-col h-full" style={{ minHeight: '65vh' }}>
                   
-                  {isPdfPreview ? (
-                    <iframe src={activeFile.original} className="w-full h-full border-none" title="PDF Preview" />
+                  {viewMode === 'original' ? (
+                    isPdfPreview ? (
+                      <iframe src={activeFile.original} className="w-full flex-1 border-none rounded-xl" title="PDF Preview" style={{ minHeight: '65vh' }} />
+                    ) : (
+                      <img src={activeFile.original} alt="Original Document" className="w-full h-full object-contain rounded-xl" />
+                    )
                   ) : (
-                    <img 
-                      src={viewMode === 'heatmap' && activeFile.heatmap ? activeFile.heatmap : (activeFile.original || "https://images.unsplash.com/photo-1568227451057-0b162de81ee1?auto=format&fit=crop&w=600&q=80")} 
-                      alt="Document Preview" 
-                      className={`w-full h-auto block transition-all duration-500 ${viewMode === 'heatmap' && !activeFile.heatmap ? 'grayscale contrast-[1.2] brightness-[0.8]' : ''}`} 
-                    />
+                    activeFile.heatmap ? (
+                      <img src={activeFile.heatmap} alt="ELA Heatmap Overlay" className="w-full h-full object-contain rounded-xl bg-slate-800" />
+                    ) : (
+                      <div className="flex items-center justify-center h-full w-full bg-slate-100 rounded-xl text-slate-500 font-bold min-h-[65vh]">
+                        Heatmap Analysis Unavailable
+                      </div>
+                    )
                   )}
                   
-                  {viewMode === 'heatmap' && isHighRisk && !activeFile.heatmap && <div className="absolute top-[35%] left-[20%] w-[40%] h-[10%] border-[4px] border-red-500 bg-red-500/30 animate-pulse rounded"><div className="absolute -top-9 -right-6 bg-red-600 text-white text-[11px] font-bold px-3 py-1.5 rounded shadow-lg whitespace-nowrap uppercase">Tampering Detected</div></div>}
-                  
-                  {activeAnomaly !== null && Array.isArray(activeFile.flagged_claims) && activeFile.flagged_claims[activeAnomaly] && (
-                    <div 
-                      ref={claimBoxRef} 
-                      className="absolute border-[3px] border-yellow-400 bg-yellow-400/20 z-20 animate-pulse rounded shadow-[0_0_15px_rgba(250,204,21,0.5)] transition-all duration-500"
-                      style={{ 
-                        top: `${activeFile.flagged_claims[activeAnomaly].y_position || (25 + (activeAnomaly * 15))}%`, 
-                        left: `${activeFile.flagged_claims[activeAnomaly].x_position || (10 + ((activeAnomaly % 2) * 15))}%`, 
-                        width: `${activeFile.flagged_claims[activeAnomaly].box_width || 70}%`, 
-                        height: `${activeFile.flagged_claims[activeAnomaly].box_height || 8}%`,
-                        pointerEvents: 'none'
-                      }}
-                    >
-                      <div className="absolute -top-8 -left-1 bg-yellow-400 text-yellow-900 text-[10px] font-black px-2 py-1 rounded shadow-lg uppercase whitespace-nowrap">
-                        {activeFile.flagged_claims[activeAnomaly].page_num ? `Located on Page ${activeFile.flagged_claims[activeAnomaly].page_num}` : 'Locating Claim...'}
-                      </div>
-                    </div>
+                  {/* 🟢 THE UI FIX: Removed the !isImageFile blocker here too! */}
+                  {activeAnomaly !== null && Array.isArray(activeFile.flagged_claims) && activeFile.flagged_claims[activeAnomaly] && !activeFile.flagged_claims[activeAnomaly].box_hidden && viewMode === 'original' && (
+                    <div ref={claimBoxRef} className="absolute bg-yellow-400/60 z-20 transition-all duration-500 rounded-sm shadow-sm" style={{ top: `${activeFile.flagged_claims[activeAnomaly].y_position}%`, left: `${activeFile.flagged_claims[activeAnomaly].x_position}%`, width: `${activeFile.flagged_claims[activeAnomaly].box_width}%`, height: `${activeFile.flagged_claims[activeAnomaly].box_height}%`, mixBlendMode: 'multiply', borderLeft: '4px solid #eab308', pointerEvents: 'none' }}><div className="absolute -top-6 -left-1 bg-yellow-500 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm uppercase whitespace-nowrap">{activeFile.flagged_claims[activeAnomaly].page_num ? `Evidence on Pg ${activeFile.flagged_claims[activeAnomaly].page_num}` : 'Target Locked'}</div></div>
                   )}
                 </div>
+                
               </div>
             </div>
           </div>
@@ -1178,165 +1032,22 @@ export default function App() {
   const renderExpertDetailModal = () => {
     if (!selectedExpertDetail) return null;
     const expert = selectedExpertDetail;
-    
-    return (
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-          <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-            <h2 className="text-xl font-bold text-slate-900">Expert Profile</h2>
-            <button onClick={() => setSelectedExpertDetail(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X className="w-5 h-5"/></button>
-          </div>
-          
-          <div className="p-8 overflow-y-auto flex-1">
-            <div className="flex flex-col md:flex-row items-start md:space-x-6 mb-8">
-              <img src={expert.image} alt={expert.name} className="w-24 h-24 rounded-full border-2 border-slate-200 object-cover mb-4 md:mb-0" />
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-slate-900">{expert.name}</h1>
-                <p className="text-[#4f46e5] font-medium text-lg">{expert.role} @ {expert.company}</p>
-                <div className="flex items-center text-sm mt-2 mb-4">
-                  <Star className="w-5 h-5 text-amber-400 fill-amber-400 mr-1.5" />
-                  <span className="font-bold text-slate-900 mr-1.5 text-base">{expert.rating}</span>
-                  <span className="text-slate-500">({expert.reviews} verified reviews)</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {expert.skills.map(s => <span key={s} className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-md">{s}</span>)}
-                </div>
-              </div>
-              <div className="mt-6 md:mt-0 w-full md:w-auto">
-                <button 
-                  onClick={() => { setSelectedExpertDetail(null); setBookingExpert(expert); }} 
-                  className="w-full bg-[#4f46e5] hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl font-bold shadow-md transition-colors"
-                >
-                  Book ({expert.rate})
-                </button>
-              </div>
-            </div>
-
-            <div className="mb-10">
-              <h3 className="text-lg font-bold text-slate-900 mb-3 border-b border-slate-100 pb-2">About {expert.name.split(' - ')[0]}</h3>
-              <p className="text-slate-600 leading-relaxed">{expert.bio}</p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center border-b border-slate-100 pb-2">
-                <MessageSquare className="w-5 h-5 mr-2 text-slate-400" /> Recent Reviews
-              </h3>
-              <div className="space-y-4">
-                {expert.reviewList.map((r, i) => (
-                  <div key={i} className="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-sm text-slate-800">{r.author}</span>
-                      <div className="flex">
-                        {[...Array(r.rating)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />)}
-                      </div>
-                    </div>
-                    <p className="text-sm text-slate-600 italic">"{r.text}"</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return (<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200"><div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50"><h2 className="text-xl font-bold text-slate-900">Expert Profile</h2><button onClick={() => setSelectedExpertDetail(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X className="w-5 h-5"/></button></div><div className="p-8 overflow-y-auto flex-1"><div className="flex flex-col md:flex-row items-start md:space-x-6 mb-8"><img src={expert.image} alt={expert.name} className="w-24 h-24 rounded-full border-2 border-slate-200 object-cover mb-4 md:mb-0" /><div className="flex-1"><h1 className="text-2xl font-bold text-slate-900">{expert.name}</h1><p className="text-[#4f46e5] font-medium text-lg">{expert.role} @ {expert.company}</p><div className="flex items-center text-sm mt-2 mb-4"><Star className="w-5 h-5 text-amber-400 fill-amber-400 mr-1.5" /><span className="font-bold text-slate-900 mr-1.5 text-base">{expert.rating}</span><span className="text-slate-500">({expert.reviews} verified reviews)</span></div><div className="flex flex-wrap gap-2">{expert.skills.map(s => <span key={s} className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-md">{s}</span>)}</div></div><div className="mt-6 md:mt-0 w-full md:w-auto"><button onClick={() => { setSelectedExpertDetail(null); setBookingExpert(expert); }} className="w-full bg-[#4f46e5] hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl font-bold shadow-md transition-colors">Book ({expert.rate})</button></div></div><div className="mb-10"><h3 className="text-lg font-bold text-slate-900 mb-3 border-b border-slate-100 pb-2">About {expert.name.split(' - ')[0]}</h3><p className="text-slate-600 leading-relaxed">{expert.bio}</p></div><div><h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center border-b border-slate-100 pb-2"><MessageSquare className="w-5 h-5 mr-2 text-slate-400" /> Recent Reviews</h3><div className="space-y-4">{expert.reviewList.map((r, i) => (<div key={i} className="bg-slate-50 p-5 rounded-xl border border-slate-100"><div className="flex items-center justify-between mb-2"><span className="font-bold text-sm text-slate-800">{r.author}</span><div className="flex">{[...Array(r.rating)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />)}</div></div><p className="text-sm text-slate-600 italic">"{r.text}"</p></div>))}</div></div></div></div></div>);
   };
 
-  if (isExternalLink) {
-    return (
-      <div className="flex h-screen font-sans bg-slate-50 text-slate-800 overflow-hidden relative">
-        {renderCandidatePortalView()}
-        {toastMessage && (
-          <div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300">
-            <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center border-l-4 border-emerald-500">
-              <CheckCircle className="w-6 h-6 text-emerald-500 mr-3 flex-shrink-0" />
-              <p className="font-bold pr-6">{toastMessage}</p>
-              <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+  if (isExternalLink) return (<div className="flex h-screen font-sans bg-slate-50 text-slate-800 overflow-hidden relative">{renderCandidatePortalView()}{toastMessage && (<div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300"><div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center border-l-4 border-emerald-500"><CheckCircle className="w-6 h-6 text-emerald-500 mr-3 flex-shrink-0" /><p className="font-bold pr-6">{toastMessage}</p><button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white transition-colors"><X className="w-5 h-5" /></button></div></div>)}</div>);
 
   return (
     <div className="flex h-screen font-sans bg-white text-slate-800 overflow-hidden relative">
       {renderSidebar()}
-      <main className="flex-1 h-screen overflow-y-auto relative bg-slate-50 border-l border-slate-200 shadow-[-10px_0_30px_rgba(0,0,0,0.05)] z-0">
-        {activeTab === 'scanner' && renderForensicScannerView()}
-        {activeTab === 'marketplace' && renderMarketplaceView()}
-        {activeTab === 'register' && renderExpertRegistrationView()}
-      </main>
-      
+      <main className="flex-1 h-screen overflow-y-auto relative bg-slate-50 border-l border-slate-200 shadow-[-10px_0_30px_rgba(0,0,0,0.05)] z-0">{activeTab === 'scanner' && renderForensicScannerView()}{activeTab === 'marketplace' && renderMarketplaceView()}{activeTab === 'register' && renderExpertRegistrationView()}</main>
       {activeTab === 'candidate_portal' && renderCandidatePortalView()}
-      
       {renderSplitScreenModal()}
       {renderExpertDetailModal()}
-      
-      {toastMessage && (
-        <div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300">
-          <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center border-l-4 border-emerald-500">
-            <CheckCircle className="w-6 h-6 text-emerald-500 mr-3 flex-shrink-0" />
-            <p className="font-bold pr-6">{toastMessage}</p>
-            <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
-          </div>
-        </div>
-      )}
-
-      {/* Rename Modal */}
-      {containerToRename && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-900">Rename Audit Case</h2>
-              <button onClick={() => setContainerToRename(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-5 h-5"/></button>
-            </div>
-            <form onSubmit={confirmRename}>
-              <input 
-                type="text" 
-                value={renameValue} 
-                onChange={(e) => setRenameValue(e.target.value)} 
-                className="w-full border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-500 outline-none mb-6 font-medium text-slate-800"
-                autoFocus
-                required
-              />
-              <div className="flex space-x-3">
-                <button type="button" onClick={() => setContainerToRename(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">Save Changes</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {containerToDelete && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200">
-            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
-              <Trash2 className="w-8 h-8 text-red-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Delete Audit Case?</h2>
-            <p className="text-slate-500 mb-8">This action cannot be undone. Are you sure you want to permanently remove this case from the ledger?</p>
-            <div className="flex space-x-3">
-              <button onClick={() => setContainerToDelete(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors">Cancel</button>
-              <button onClick={confirmDelete} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">Yes, Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Registration Success Modal */}
-      {registrationSuccess && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200">
-            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Application Submitted!</h2>
-            <p className="text-slate-500">Our team will review your profile and contact you shortly.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Booking Modal */}
+      {toastMessage && (<div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300"><div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center border-l-4 border-emerald-500"><CheckCircle className="w-6 h-6 text-emerald-500 mr-3 flex-shrink-0" /><p className="font-bold pr-6">{toastMessage}</p><button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white transition-colors"><X className="w-5 h-5" /></button></div></div>)}
+      {containerToRename && (<div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200"><div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold text-slate-900">Rename Audit Case</h2><button onClick={() => setContainerToRename(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-5 h-5"/></button></div><form onSubmit={confirmRename}><input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="w-full border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-500 outline-none mb-6 font-medium text-slate-800" autoFocus required /><div className="flex space-x-3"><button type="button" onClick={() => setContainerToRename(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors">Cancel</button><button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">Save Changes</button></div></form></div></div>)}
+      {containerToDelete && (<div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200"><div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6"><Trash2 className="w-8 h-8 text-red-600" /></div><h2 className="text-2xl font-bold text-slate-900 mb-2">Delete Audit Case?</h2><p className="text-slate-500 mb-8">This action cannot be undone. Are you sure you want to permanently remove this case from the ledger?</p><div className="flex space-x-3"><button onClick={() => setContainerToDelete(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors">Cancel</button><button onClick={confirmDelete} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">Yes, Delete</button></div></div></div>)}
+      {registrationSuccess && (<div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200"><CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" /><h2 className="text-2xl font-bold text-slate-900 mb-2">Application Submitted!</h2><p className="text-slate-500">Our team will review your profile and contact you shortly.</p></div></div>)}
       {bookingExpert && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8">{bookingSuccess ? <div className="text-center py-6"><CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4"/><h2 className="text-2xl font-bold text-slate-900 mb-2">Interview Booked!</h2><p className="text-slate-500">Google Meet invite sent to {bookingExpert.name}.</p></div> : <form onSubmit={handleBookExpert}><div className="flex justify-between items-start mb-8"><div><h2 className="text-2xl font-bold text-slate-900">Book Interview</h2><p className="text-slate-500 mt-1">with {bookingExpert.name}</p></div><button type="button" onClick={() => setBookingExpert(null)}><X className="w-5 h-5 text-slate-400"/></button></div><div className="space-y-5"><div><label className="block text-sm font-bold text-slate-700 mb-2">Select Date & Time</label><input type="datetime-local" required className="w-full border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-500 outline-none font-medium" /></div></div><button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl mt-8 transition-colors shadow-lg">Confirm Booking</button></form>}</div></div>}
     </div>
   );
