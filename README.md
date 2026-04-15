@@ -1,7 +1,7 @@
-# 🔍 ForensikGaji: Sovereign Digital Document Defense
+# 🔍 ForensikGaji: Sovereign Digital Document Defense & Forensic Auditing
 
 [![Deployed on Google Cloud Run](https://img.shields.io/badge/Deployed_on-Google_Cloud_Run-blue?logo=googlecloud)](https://forensikgaji-frontend-381516681695.asia-southeast1.run.app)
-[![Powered by Gemini](https://img.shields.io/badge/Powered_by-Google_Gemini-orange?logo=google)](https://ai.google.dev/)
+[![Powered by Gemini 2.0](https://img.shields.io/badge/Powered_by-Google_Gemini_2.5_Flash-orange?logo=google)](https://ai.google.dev/)
 [![Track: Secure Digital](https://img.shields.io/badge/Track-Secure_Digital-success)](#)
 
 **🚨 LIVE APPLICATION:** [Launch the ForensikGaji Forensic Portal](https://forensikgaji-frontend-381516681695.asia-southeast1.run.app)  
@@ -14,10 +14,12 @@ ForensikGaji is an AI-powered forensic document auditing platform engineered for
 
 Our platform transitions document verification from manual guesswork to autonomous Agentic AI execution:
 
-* **Pixel-Level Forensic Vision:** Utilizes Error Level Analysis (ELA) via OpenCV to generate visual heatmaps, immediately highlighting spliced or digitally altered regions of a document.
-* **Autonomous Semantic Auditing:** Google Gemini 2.5 acts as the central brain, cross-referencing extracted text, dates, and mathematical totals to flag logical impossibilities.
-* **Instant Risk Scoring:** Provides HR managers and financial auditors with a definitive "Trust Score" and human-readable fraud verdict in seconds.
-* **Expert Marketplace Integration:** Seamlessly connect flagged cases with human forensic experts, generating automated Google Meet calendar invites via the Google Workspace API.
+*   **Multi-Layer Forensic Vision:** Utilizes Error Level Analysis (ELA) and Digital Sharpness Detection via OpenCV to generate heatmaps that highlight spliced text and "Canva-injected" digital insertions.
+*   **Agentic Reasoning Layer:** Powered by **Gemini 2.5 Flash**, the engine doesn't just scan—it reasons. It identifies "Outstanding Claims" versus "Areas for Clarification," providing a narrative forensic verdict.
+*   **Behavioral Interview Synthesis:** For every flagged anomaly, the AI generates specific, hard-hitting behavioral interview questions to help recruiters verify claims during live sessions.
+*   **Executive Risk Dashboard:** Real-time analytics showing risk distribution (Authentic vs. Critical) across the entire talent pipeline.
+*   **Hybrid Ingestion:** Support for both secure "Audit Links" (sent to candidates) and "Direct HR Uploads" for immediate internal batch processing.
+*   **Expert Marketplace:** A vetted ecosystem of technical leads and auditors available for on-demand deep-dive interviews, integrated with Google Workspace.
 
 ---
 
