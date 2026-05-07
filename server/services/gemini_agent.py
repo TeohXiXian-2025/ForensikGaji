@@ -16,8 +16,7 @@ def generate_verdict_and_questions(extracted_text: str, metadata_analysis: dict,
     )
     
     prompt = f"""
-    You are an Expert Technical Recruiter and Lead Forensic Document Examiner for the ForensikGaji HR platform. 
-    Your job is to read between the lines of a candidate's document to assess their reliability, pinpoint logical inconsistencies, detect "sugar-coated" claims, and evaluate forensic integrity.
+    You are ForensikGaji, a strict HR Document Forensic AI. 
 
     INPUT DATA:
     1. Extracted Text: '{extracted_text}'
@@ -26,46 +25,46 @@ def generate_verdict_and_questions(extracted_text: str, metadata_analysis: dict,
 
     IMPORTANT CONTEXT: The current actual date is {current_date}. Do NOT flag events from 2023, 2024, 2025, or early 2026 as "future dates".
 
-    CRITICAL INSTRUCTIONS & GUARDRAILS:
-    1. NEVER INVENT VISUAL EVIDENCE: Do not mention "Error Level Analysis", "ELA", "Heatmaps", or "Red Boxes" in your fraud_verdict UNLESS the Layer 1 input data explicitly states that visual tampering was detected. 
-    2. CITE REAL REASONS: If the fraud score is low because of Canva metadata, script generation tools, or keyword stuffing, state exactly that in the verdict. Do not make up visual pixel tampering.
-    3. SCORE ENFORCEMENT: If Layer 1 detects Canva, Photoshop, or any suspicious software metadata, you MUST force the 'fraud_probability_score' to be strictly between 10 and 25. Do not output a high score if fabrication is detected.
-    4. HR ANALYSIS & DOCUMENT TYPE CONTEXT: 
-       - If the Extracted Text appears to be a RESUME/CV: The 'fraud_verdict' must focus on analyzing the candidate's key strengths, potential exaggerations, and timeline overlaps. Frame suspicious text as "Areas to verify during the interview".
-       - If the Extracted Text appears to be an OFFICIAL DOCUMENT (Receipt, Certificate, ID): The 'fraud_verdict' must focus strictly on forensic integrity, manipulation, and mathematical/logical discrepancies.
+    RULES FOR THE SCORE (0-100):
+    1. VARIABLE NAME FIX: The key you must output is named 'fraud_probability_score', BUT it is displayed to the user as a "TRUST SCORE". 
+    2. Therefore, 100 = PERFECTLY SAFE / AUTHENTIC. 0 = COMPLETE FRAUD.
+    3. Start every document at 100.
+    4. ABSOLUTE OVERRIDE: If the Layer 1 'structural_anomalies' array contains ANY "CRITICAL" warnings, you MUST set the score between 10 and 25. 
+    5. CONTENT PENALTIES: If Layer 1 is structurally clean, DO NOT automatically give a 100. You MUST deduct 5 to 30 points if you detect logical contradictions, highly exaggerated claims, impossible dates, or if Layer 2 detects "keyword stuffing". A normal, honest resume scores 95-100. A highly exaggerated or illogical resume should drop to 70-85.
 
-    🔥 STRICT RULE FOR 'claim' FIELD:
-    The "claim" string MUST be EXACTLY 1 TO 3 WORDS. Extract the exact short target (e.g., "060502-06-0978", "A+", "tertinggi"). Do NOT write full sentences here, or the UI locator will fail.
+    RULES FOR FLAGGED CLAIMS (Yellow Boxes):
+    1. DIVISION OF LABOR: The system's ELA Heatmap (Red Boxes) already handles all visual tampering. DO NOT create Yellow Boxes for Canva, metadata, or pixel tampering.
+    2. THE INTERVIEWER'S TOOL: Yellow Boxes are ONLY for the HR Interviewer. Flag 2-3 logical contradictions, timeline anomalies, OR impressive skills.
+    3. The "claim" field MUST BE AN EXACT, WORD-FOR-WORD QUOTE from the document. Keep it exactly 1 to 3 words. Do not summarize or the UI box will fail to target it.
+    4. In the "interview_question" field, generate a highly specific, hard question to verify the candidate's knowledge or logic regarding this specific yellow-boxed claim.
 
     TASKS:
-    Task 1: Calculate 'ats_relevancy_score' (0-100) based on how well skills match industry profiles.
-    Task 2: Determine 'fraud_probability_score' (0-100). Obey Rule 3 strictly.
+    Task 1: Calculate 'ats_relevancy_score' (0-100).
+    Task 2: Determine 'fraud_probability_score' (0-100). Obey the 100=Safe and Content Penalty rules strictly.
     Task 3: Note any timeline gaps or anomalies in 'reconstructed_original_data'.
-    Task 4: Identify 1 "Outstanding" claim (a strength) and 1-2 "Areas for Clarification" (exaggerated or forensically flagged claims).
-    Task 5: For every flagged claim, generate a specific, hard behavioral or technical interview question designed to verify it.
+    Task 4: Identify 2-3 logical claims or skills for the interviewer to focus on.
+    Task 5: Generate specific interview questions for those flagged claims.
 
-    Return ONLY a valid JSON object with these exact keys:
+    Return ONLY a valid JSON object matching this exact structure:
     {{
         "ats_relevancy_score": 85,
-        "fraud_probability_score": 15,
-        "status_color": "Red",
-        "fraud_verdict": "Executive summary based on the Document Type Context rule (Resume strengths vs. Document forensics).",
-        "reconstructed_original_data": "Explanation of any timeline gaps/overlaps, or 'None'.",
+        "fraud_probability_score": 100,
+        "status_color": "Green",
+        "fraud_verdict": "Executive summary explaining why the document is safe or why points were deducted for content.",
+        "reconstructed_original_data": "Timeline notes",
         "flagged_claims": [
             {{
                 "claim": "EXACT_SHORT_TARGET", 
-                "category": "Outstanding or Clarification Needed",
-                "hr_note": "A note explaining why this is a strength or why it seems sugar-coated/tampered.",
-                "interview_question": "A specific follow-up question the recruiter should ask to verify this exact claim."
+                "category": "Clarification Needed",
+                "hr_note": "Why this logical claim is impressive or needs verbal verification.",
+                "interview_question": "A specific interview question."
             }}
         ]
     }}
     """
     try:
-        # Use the stable Flash model
         model = GenerativeModel("gemini-2.5-flash")
         
-        # KEY CHANGE: Tell Vertex to return RAW JSON only.
         response = model.generate_content(
             prompt,
             generation_config={"response_mime_type": "application/json"}
@@ -82,6 +81,5 @@ def generate_verdict_and_questions(extracted_text: str, metadata_analysis: dict,
             "status_color": "Yellow",
             "fraud_verdict": f"AI Analysis failed. Error: {str(e)}",
             "reconstructed_original_data": "None",
-            "flagged_claims": [],
-            "smart_questions": []
+            "flagged_claims": []
         }
