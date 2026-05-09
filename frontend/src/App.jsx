@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 import { initialContainers, expertDatabase } from './constants';
+import { fetchAllCases, createCase, updateCase, deleteCase, addFilesToCase } from './apiService';
 
 /**
  * AuditCaseItem Component
@@ -47,7 +48,7 @@ import { initialContainers, expertDatabase } from './constants';
  * @param {Function} onRenameFile - Callback to rename a file
  * @param {Function} onBookExpertFromDashboard - Callback to book expert from dashboard
  */
-const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpenPortal, onUpdateFileStatus, onDeleteFile, onRenameFile, onBookExpertFromDashboard }) => {
+const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpenPortal, onUpdateFileStatus, onDeleteFile, onRenameFile, onBookExpertFromDashboard, onOpenDetail }) => {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('risk_high');
 
@@ -66,47 +67,47 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
   }
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 flex flex-col md:flex-row justify-between gap-6 transition-all hover:bg-slate-900/80 hover:shadow-[0_8px_30px_rgba(37,99,235,0.15)] hover:border-white/20">
+    <div onClick={() => onOpenDetail && onOpenDetail(c)} className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row justify-between gap-6 transition-all hover:bg-gray-50 hover:shadow-[0_8px_30px_rgba(37,99,235,0.1)] hover:border-gray-300 cursor-pointer">
       <div className="flex-1 min-w-0 w-full md:pr-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-slate-500 uppercase">{c.id}</span>
+            <span className="text-xs font-bold text-gray-500 uppercase">{c.id}</span>
             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-              c.status === 'waiting' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-              c.status === 'processing' ? 'bg-blue-500/20 text-blue-400 animate-pulse border-blue-500/30' :
-              'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+              c.status === 'waiting' ? 'bg-amber-100 text-amber-700 border-amber-300' :
+              c.status === 'processing' ? 'bg-blue-100 text-blue-700 animate-pulse border-blue-300' :
+              'bg-emerald-100 text-emerald-700 border-emerald-300'
             }`}>
               {c.status === 'waiting' ? 'Waiting for Candidate' : c.status === 'processing' ? 'Analyzing Files...' : 'Analysis Complete'}
             </span>
           </div>
           <div className="flex items-center space-x-1">
-            <button onClick={() => onRename(c.id, c.name)} className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-white/10 rounded transition-colors" title="Rename Case">
+            <button onClick={() => onRename(c.id, c.name)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors" title="Rename Case">
               <Edit className="w-4 h-4" />
             </button>
-            <button onClick={() => onDelete(c.id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-white/10 rounded transition-colors" title="Delete Case">
+            <button onClick={() => onDelete(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded transition-colors" title="Delete Case">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <h3 className="text-lg font-semibold text-slate-100">{c.name}</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{c.name}</h3>
 
         {c.status === 'completed' && Array.isArray(c.data?.files) && c.data.files.length > 0 ? (
           <div className="mt-6">
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search file name..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-slate-950/50 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-slate-950/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               >
                 <option value="risk_high">Sort: Highest Risk</option>
                 <option value="risk_low">Sort: Lowest Risk</option>
@@ -120,17 +121,17 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
                 const origIdx = c.data.files.findIndex(f => f.name === file.name);
 
                 return (
-                  <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-950/80 border border-slate-800 px-4 py-3 rounded-lg gap-3 hover:border-white/20 transition-colors">
+                  <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg gap-3 hover:border-gray-300 transition-colors">
                     <div className="flex items-center min-w-0 overflow-hidden flex-1">
-                      <FileText className="w-4 h-4 text-slate-500 mr-3 flex-shrink-0" />
-                      <span className="text-sm font-medium text-slate-200 truncate block cursor-pointer hover:text-blue-400" onClick={() => onViewReport(c, origIdx)}>{file.name}</span>
+                      <FileText className="w-4 h-4 text-gray-400 mr-3 flex-shrink-0" />
+                      <span className="text-sm font-medium text-gray-800 truncate block cursor-pointer hover:text-blue-600" onClick={() => onViewReport(c, origIdx)}>{file.name}</span>
                     </div>
 
                     <div className="flex items-center space-x-3">
                       <div className={`px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap ${
-                        file.score >= 80 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                        file.score < 40 ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                        'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        file.score >= 80 ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' :
+                        file.score < 40 ? 'bg-red-100 text-red-700 border border-red-300' :
+                        'bg-amber-100 text-amber-700 border border-amber-300'
                       }`}>
                         Score: {file.score}%
                       </div>
@@ -140,10 +141,10 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
                           value={file.investigation_status || 'Unreviewed'}
                           onChange={(e) => onUpdateFileStatus(c.id, file.name, e.target.value)}
                           className={`text-xs rounded-md px-2 py-1 outline-none border font-medium ${
-                            file.investigation_status === 'Investigated - Fraud' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                            file.investigation_status === 'Investigated - Not Scam' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                            file.investigation_status === 'Investigation Ongoing' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-                            'bg-slate-800 text-slate-400 border-slate-700'
+                            file.investigation_status === 'Investigated - Fraud' ? 'bg-red-100 text-red-700 border-red-300' :
+                            file.investigation_status === 'Investigated - Not Scam' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                            file.investigation_status === 'Investigation Ongoing' ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                            'bg-gray-200 text-gray-600 border-gray-300'
                           }`}
                         >
                           <option value="Unreviewed">Unreviewed</option>
@@ -153,39 +154,40 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
                         </select>
                       )}
 
-                      <button onClick={() => onRenameFile(c.id, origIdx, file.name)} className="text-slate-400 hover:text-blue-400 p-1 transition-colors" title="Rename File">
+                      <button onClick={() => onRenameFile(c.id, origIdx, file.name)} className="text-gray-400 hover:text-blue-600 p-1 transition-colors" title="Rename File">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button onClick={() => onDeleteFile(c.id, file.name)} className="text-slate-400 hover:text-red-400 p-1 transition-colors" title="Delete File">
+                      <button onClick={() => onDeleteFile(c.id, file.name)} className="text-gray-400 hover:text-red-600 p-1 transition-colors" title="Delete File">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 );
               })}
-              {displayFiles.length === 0 && <p className="text-slate-500 text-sm italic">No files match your search.</p>}
+              {displayFiles.length === 0 && <p className="text-gray-500 text-sm italic">No files match your search.</p>}
             </div>
           </div>
         ) : (
-          <p className="text-slate-500 text-sm mt-2">{c.type}</p>
+          <p className="text-gray-500 text-sm mt-2">{c.type}</p>
         )}
       </div>
 
-      <div className="flex flex-col gap-3 justify-center border-t md:border-t-0 md:border-l border-white/5 pt-4 md:pt-0 md:pl-6 min-w-[200px]">
+      <div className="flex flex-col gap-3 justify-center border-t md:border-t-0 md:border-l border-gray-200 pt-4 md:pt-0 md:pl-6 min-w-[200px]">
         {(c.status === 'waiting' || c.status === 'completed') && (
           <div className="flex flex-col space-y-2">
-             <label className="text-xs font-bold text-slate-500 uppercase">Upload Portal Link</label>
-             <div className="flex items-center space-x-2 bg-slate-950/50 border border-white/10 p-2 rounded-lg">
-               <button onClick={() => onOpenPortal(c.id)} className="text-blue-400 font-mono text-xs truncate max-w-[140px] hover:underline" title={c.link}>{c.link}</button>
-               <button onClick={() => onCopyLink(c.link)} className="p-1 hover:bg-white/10 rounded text-slate-400 transition-colors"><Copy className="w-4 h-4" /></button>
+             <label className="text-xs font-bold text-gray-500 uppercase">Upload Portal Link</label>
+             <div className="flex items-center space-x-2 bg-gray-50 border border-gray-300 p-2 rounded-lg">
+               <button onClick={() => onOpenPortal(c.id)} className="text-blue-600 font-mono text-xs truncate max-w-[140px] hover:underline" title={c.link}>{c.link}</button>
+               <button onClick={() => onCopyLink(c.link)} className="p-1 hover:bg-gray-200 rounded text-gray-400 transition-colors"><Copy className="w-4 h-4" /></button>
              </div>
+             <p className="text-xs text-gray-500 italic">💡 Share this link with candidate. Keep dashboard open for real-time sync (same browser).</p>
           </div>
         )}
 
         {c.status === 'processing' && (
-          <div className="flex flex-col items-center justify-center p-4 bg-slate-950/50 rounded-lg border border-white/10">
-            <Activity className="w-6 h-6 text-blue-400 animate-spin mb-2" />
-            <span className="text-xs font-medium text-slate-400">Processing...</span>
+          <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <Activity className="w-6 h-6 text-blue-600 animate-spin mb-2" />
+            <span className="text-xs font-medium text-gray-600">Processing...</span>
           </div>
         )}
 
@@ -195,7 +197,7 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
               View Full Report <ArrowRight className="w-4 h-4 ml-2" />
             </button>
             {c.type?.toLowerCase().includes('resume') && (
-               <button onClick={() => onBookExpertFromDashboard(c)} className="w-full bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm flex justify-center items-center">
+               <button onClick={() => onBookExpertFromDashboard(c)} className="w-full bg-gray-100 hover:bg-gray-200 text-cyan-600 border border-gray-300 py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm flex justify-center items-center">
                   Book Expert <Users className="w-4 h-4 ml-2" />
                </button>
             )}
@@ -234,6 +236,24 @@ export default function App() {
       return initialContainers;
     }
   });
+
+  // Load data from API on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const apiCases = await fetchAllCases();
+        if (apiCases && apiCases.length > 0) {
+          setContainers(apiCases);
+          try {
+            localStorage.setItem('forensikGajiCases', JSON.stringify(apiCases));
+          } catch (e) {}
+        }
+      } catch (error) {
+        console.error("Failed to load from API on mount, using localStorage:", error);
+      }
+    };
+    loadInitialData();
+  }, []);
 
   useEffect(() => {
     const bc = new BroadcastChannel('forensik_sync');
@@ -345,10 +365,65 @@ export default function App() {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
 
+  const [activeAuditCase, setActiveAuditCase] = useState(null);
+  const [activeDocTab, setActiveDocTab] = useState('all');
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+  const [auditCaseTypeFilter, setAuditCaseTypeFilter] = useState('all');
+
   const [creationMode, setCreationMode] = useState('link');
   const [directFiles, setDirectFiles] = useState([]);
   
   const claimBoxRef = useRef(null);
+
+  // Function to manually refresh data from API (with localStorage fallback)
+  const refreshData = async () => {
+    try {
+      // Try to fetch from API first
+      const apiCases = await fetchAllCases();
+      if (apiCases && apiCases.length > 0) {
+        setContainers(apiCases);
+        // Also update localStorage as cache
+        try {
+          localStorage.setItem('forensikGajiCases', JSON.stringify(apiCases));
+        } catch (e) {}
+      } else {
+        // Fallback to localStorage if API returns empty
+        const saved = localStorage.getItem('forensikGajiCases');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const validData = parsed.filter(c => c !== null && typeof c === 'object' && c.id && c.name);
+            setContainers(validData.length > 0 ? validData : []);
+          }
+        }
+      }
+      setLastRefreshTime(Date.now());
+    } catch (e) {
+      console.error("Error refreshing data from API, falling back to localStorage:", e);
+      // Fallback to localStorage
+      const saved = localStorage.getItem('forensikGajiCases');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const validData = parsed.filter(c => c !== null && typeof c === 'object' && c.id && c.name);
+            setContainers(validData.length > 0 ? validData : []);
+          }
+        } catch (e2) {}
+      }
+      setLastRefreshTime(Date.now());
+    }
+  };
+
+  // Auto-poll for updates every 10 seconds when on dashboard
+  useEffect(() => {
+    if (activeTab === 'scanner' || activeTab === 'new_entry') {
+      const interval = setInterval(() => {
+        refreshData();
+      }, 10000); // Poll every 10 seconds
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (selectedContainer && viewMode === 'original') {
@@ -423,38 +498,51 @@ export default function App() {
   /**
    * Creates a new audit case with a unique ID and upload link.
    * Supports both link generation (for candidates) and direct upload modes.
+   * Now uses API for proper cross-device synchronization.
    */
-  const handleCreateContainer = (e) => {
+  const handleCreateContainer = async (e) => {
     e.preventDefault();
     if (!newContainerName.trim() || newContainerTypes.length === 0) return;
-    
+
     const finalTypes = newContainerTypes.map(t => t === 'Other' && otherDocType.trim() ? otherDocType.trim() : t).filter(t => t !== 'Other' || otherDocType.trim());
     if (finalTypes.length === 0) return;
 
-    const newId = `req-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newContainer = {
-      id: newId,
-      name: newContainerName,
-      type: finalTypes.join(' + '), 
-      status: 'waiting',
-      link: `https://forensikgaji-frontend-381516681695.asia-southeast1.run.app/?upload=${newId}`,
-      data: null
-    };
-    
-    setContainers(prev => {
-      const safePrev = Array.isArray(prev) ? prev : [];
-      const newContainers = [newContainer, ...safePrev];
-      try {
-        const bc = new BroadcastChannel('forensik_sync');
-        bc.postMessage({ type: 'UPDATE_CASE', payload: newContainer });
-        bc.close();
-      } catch(e) {}
-      return newContainers;
-    });
-    
-    setNewContainerName('');
-    setNewContainerTypes(['Resume']);
-    setOtherDocType('');
+    try {
+      // Use API to create the case
+      const newCase = await createCase(newContainerName, finalTypes);
+
+      // Update local state
+      setContainers(prev => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        return [newCase, ...safePrev];
+      });
+
+      setNewContainerName('');
+      setNewContainerTypes(['Resume']);
+      setOtherDocType('');
+    } catch (error) {
+      console.error("Failed to create case via API, falling back to local:", error);
+
+      // Fallback to local creation (for offline/error scenarios)
+      const newId = `req-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newContainer = {
+        id: newId,
+        name: newContainerName,
+        type: finalTypes.join(' + '),
+        status: 'waiting',
+        link: `https://forensikgaji-frontend-381516681695.asia-southeast1.run.app/?upload=${newId}`,
+        data: null
+      };
+
+      setContainers(prev => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        return [newContainer, ...safePrev];
+      });
+
+      setNewContainerName('');
+      setNewContainerTypes(['Resume']);
+      setOtherDocType('');
+    }
   };
 
   /**
@@ -613,46 +701,58 @@ export default function App() {
 
       setSessionUploadedFiles(prev => [...prev, ...uploadedFilesData]);
 
-      setContainers(prev => {
-        const safePrev = Array.isArray(prev) ? prev : [];
-        const newContainers = safePrev.map(c => {
-          if (c && c.id === activeCandidateUploadId) {
-            const existingFiles = Array.isArray(c.data?.files) ? c.data.files : [];
-            const mergedFiles = [...existingFiles];
-            uploadedFilesData.forEach(nf => {
-               if (!mergedFiles.find(of => of.name === nf.name)) mergedFiles.push(nf);
-            });
-            
-            const newAvgScore = mergedFiles.length > 0 
-                ? Math.round(mergedFiles.reduce((acc, f) => acc + f.score, 0) / mergedFiles.length) 
-                : 100;
-
-            return {
-              ...c,
-              status: 'completed',
-              data: {
-                ...c.data,
-                score: newAvgScore === 100 && mergedFiles.length === 0 ? 0 : newAvgScore,
-                date: new Date().toLocaleDateString(),
-                clash_detected: false, 
-                files: mergedFiles
-              }
-            };
-          }
-          return c;
+      // Use API to add files to the case (enables cross-device sync)
+      try {
+        const updatedCase = await addFilesToCase(activeCandidateUploadId, uploadedFilesData);
+        setContainers(prev => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          return safePrev.map(c => c?.id === activeCandidateUploadId ? updatedCase : c);
         });
+      } catch (apiError) {
+        console.error("API upload failed, using local fallback:", apiError);
 
-        try {
-          const updatedContainer = newContainers.find(c => c && c.id === activeCandidateUploadId);
-          if (updatedContainer) {
-            const bc = new BroadcastChannel('forensik_sync');
-            bc.postMessage({ type: 'UPDATE_CASE', payload: updatedContainer });
-            bc.close();
-          }
-        } catch (e) { console.warn("Sync skipped for large payload"); }
+        // Fallback to local state management
+        setContainers(prev => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          const newContainers = safePrev.map(c => {
+            if (c && c.id === activeCandidateUploadId) {
+              const existingFiles = Array.isArray(c.data?.files) ? c.data.files : [];
+              const mergedFiles = [...existingFiles];
+              uploadedFilesData.forEach(nf => {
+                 if (!mergedFiles.find(of => of.name === nf.name)) mergedFiles.push(nf);
+              });
 
-        return newContainers;
-      });
+              const newAvgScore = mergedFiles.length > 0
+                  ? Math.round(mergedFiles.reduce((acc, f) => acc + f.score, 0) / mergedFiles.length)
+                  : 100;
+
+              return {
+                ...c,
+                status: 'completed',
+                data: {
+                  ...c.data,
+                  score: newAvgScore === 100 && mergedFiles.length === 0 ? 0 : newAvgScore,
+                  date: new Date().toLocaleDateString(),
+                  clash_detected: false,
+                  files: mergedFiles
+                }
+              };
+            }
+            return c;
+          });
+
+          try {
+            const updatedContainer = newContainers.find(c => c && c.id === activeCandidateUploadId);
+            if (updatedContainer) {
+              const bc = new BroadcastChannel('forensik_sync');
+              bc.postMessage({ type: 'UPDATE_CASE', payload: updatedContainer });
+              bc.close();
+            }
+          } catch (e) { console.warn("Sync skipped for large payload"); }
+
+          return newContainers;
+        });
+      }
       
       setIsUploading(false);
       setUploadSuccess(true);
@@ -669,9 +769,16 @@ export default function App() {
     }
   };
 
-  const confirmDelete = () => {
-    setContainers(prev => Array.isArray(prev) ? prev.filter(c => c && c.id !== containerToDelete) : []);
-    setContainerToDelete(null);
+  const confirmDelete = async () => {
+    try {
+      await deleteCase(containerToDelete);
+      setContainers(prev => Array.isArray(prev) ? prev.filter(c => c && c.id !== containerToDelete) : []);
+      setContainerToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete case via API, using local fallback:", error);
+      setContainers(prev => Array.isArray(prev) ? prev.filter(c => c && c.id !== containerToDelete) : []);
+      setContainerToDelete(null);
+    }
   };
 
   const openRenameModal = (id, currentName) => {
@@ -679,10 +786,16 @@ export default function App() {
     setRenameValue(currentName);
   };
 
-  const confirmRename = (e) => {
+  const confirmRename = async (e) => {
     e.preventDefault();
     if (renameValue && renameValue.trim() !== "") {
-      setContainers(prev => Array.isArray(prev) ? prev.map(c => c && c.id === containerToRename ? { ...c, name: renameValue } : c) : []);
+      try {
+        await updateCase(containerToRename, { name: renameValue });
+        setContainers(prev => Array.isArray(prev) ? prev.map(c => c && c.id === containerToRename ? { ...c, name: renameValue } : c) : []);
+      } catch (error) {
+        console.error("Failed to rename case via API, using local fallback:", error);
+        setContainers(prev => Array.isArray(prev) ? prev.map(c => c && c.id === containerToRename ? { ...c, name: renameValue } : c) : []);
+      }
     }
     setContainerToRename(null);
   };
@@ -855,87 +968,148 @@ export default function App() {
    * Renders the navigation sidebar with menu items.
    * Shows different active states based on current tab.
    */
-  const renderSidebar = () => (
-    <div className="w-72 bg-slate-950/80 backdrop-blur-xl text-white flex flex-col h-full flex-shrink-0 border-r border-white/5 shadow-[5px_0_30px_rgba(0,0,0,0.5)] z-20">
-      <div className="p-6 flex items-center space-x-3 border-b border-white/5">
+  const renderSidebar = () => {
+    // Get unique case types from containers for the audit cases filter
+    const caseTypes = ['all', ...new Set(safeContainers.flatMap(c => {
+      if (!c.type) return [];
+      return c.type.split(' + ').map(t => t.trim());
+    }))];
+
+    return (
+    <div className="w-72 bg-white/80 backdrop-blur-xl text-gray-800 flex flex-col h-full flex-shrink-0 border-r border-gray-200 shadow-[5px_0_30px_rgba(0,0,0,0.1)] z-20">
+      <div className="p-6 flex items-center space-x-3 border-b border-gray-200">
         <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-2.5 rounded-xl shadow-lg shadow-cyan-500/20">
           <Shield className="w-6 h-6 text-white" />
         </div>
-        <span className="text-xl font-bold tracking-tight text-white">Forensik<span className="text-cyan-400">Gaji</span></span>
+        <span className="text-xl font-bold tracking-tight text-gray-900">Forensik<span className="text-cyan-600">Gaji</span></span>
       </div>
       <nav className="flex-1 px-3 space-y-2 mt-6">
-        <button onClick={() => setActiveTab('scanner')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'scanner' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+        <button onClick={() => setActiveTab('scanner')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'scanner' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
           <Activity className="w-5 h-5" /> <span>Dashboard</span>
         </button>
-        <button onClick={() => setActiveTab('marketplace')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'marketplace' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+
+        {/* New Audit Cases Tab with Expandable Type Filters */}
+        <div>
+          <button
+            onClick={() => setActiveTab(activeTab === 'audit_cases' ? 'scanner' : 'audit_cases')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'audit_cases' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+          >
+            <div className="flex items-center space-x-3">
+              <FileText className="w-5 h-5" /> <span>Audit Cases</span>
+            </div>
+            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">{safeContainers.length}</span>
+          </button>
+
+          {/* Show type filters when Audit Cases is active */}
+          {activeTab === 'audit_cases' && (
+            <div className="ml-6 mt-2 space-y-1">
+              {caseTypes.map(type => {
+                const displayName = type === 'all' ? 'All Types' : type;
+                const count = type === 'all' ? safeContainers.length : safeContainers.filter(c => c.type && c.type.includes(type)).length;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setAuditCaseTypeFilter(type)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      auditCaseTypeFilter === type
+                        ? 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+                        : 'text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span>{displayName}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      auditCaseTypeFilter === type
+                        ? 'bg-cyan-200 text-cyan-800'
+                        : 'bg-gray-200 text-gray-500'
+                    }`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <button onClick={() => setActiveTab('marketplace')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'marketplace' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
           <Users className="w-5 h-5" /> <span>Expert Marketplace</span>
         </button>
-        <button onClick={() => setActiveTab('register')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'register' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+        <button onClick={() => setActiveTab('register')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'register' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
           <UserPlus className="w-5 h-5" /> <span>Register as Expert</span>
         </button>
       </nav>
-      <div className="p-4 mt-auto border-t border-white/5 space-y-3">
-        <button onClick={() => setActiveTab('new_entry')} className={`w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all ${activeTab === 'new_entry' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' : 'bg-white/5 text-emerald-400 border border-white/10 hover:bg-white/10 hover:shadow-lg'}`}>
+      <div className="p-4 mt-auto border-t border-gray-200 space-y-3">
+        <button onClick={() => setActiveTab('new_entry')} className={`w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all ${activeTab === 'new_entry' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' : 'bg-gray-100 text-emerald-600 border border-gray-200 hover:bg-gray-200 hover:shadow-lg'}`}>
           <PlusCircle className="w-5 h-5" /> <span>New Entry</span>
         </button>
-        <button onClick={() => setActiveTab('landing')} className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all bg-transparent text-slate-400 border border-transparent hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400">
+        <button onClick={() => setActiveTab('landing')} className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all bg-transparent text-gray-500 border border-transparent hover:border-red-500/30 hover:bg-red-50 hover:text-red-500">
           <LogOut className="w-5 h-5" /> <span>Log Out</span>
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderForensicScannerView = () => (
     <div className="p-8 lg:p-12 pb-32 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
          <div>
-            <h1 className="text-3xl font-black text-slate-100 tracking-tight drop-shadow-md">Forensic Scanner Dashboard</h1>
-            <p className="text-blue-400 mt-2 text-lg font-bold drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]">Sovereign Forensic Layer v2.0</p>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Forensic Scanner Dashboard</h1>
+            <p className="text-cyan-600 mt-2 text-lg font-bold">Sovereign Forensic Layer v2.0</p>
          </div>
+         <button
+           onClick={refreshData}
+           className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors border border-gray-300"
+           title="Refresh data from storage"
+         >
+           <Activity className="w-4 h-4" />
+           <span>Refresh</span>
+           <span className="text-xs text-gray-500">
+             {lastRefreshTime && `(${Math.round((Date.now() - lastRefreshTime) / 1000)}s ago)`}
+           </span>
+         </button>
       </div>
 
       {/* Global Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="p-6 bg-slate-900/50 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-white/20 hover:shadow-[0_8px_40px_rgba(37,99,235,0.15)] transition-all">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:text-blue-400 group-hover:opacity-10 transition-all"><Shield className="w-24 h-24 text-slate-400" /></div>
-          <h3 className="text-sm text-slate-400 font-bold uppercase tracking-wider">Total Active Audits</h3>
-          <p className="text-4xl font-black mt-3 text-slate-100">{totalAudits}</p>
+        <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-[0_4px_30px_rgba(0,0,0,0.1)] relative overflow-hidden group hover:border-gray-300 hover:shadow-[0_8px_40px_rgba(37,99,235,0.1)] transition-all">
+          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:text-blue-400 group-hover:opacity-10 transition-all"><Shield className="w-24 h-24 text-gray-400" /></div>
+          <h3 className="text-sm text-gray-500 font-bold uppercase tracking-wider">Total Active Audits</h3>
+          <p className="text-4xl font-black mt-3 text-gray-900">{totalAudits}</p>
         </div>
-        <div className="p-6 bg-slate-900/50 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-white/20 hover:shadow-[0_8px_40px_rgba(37,99,235,0.15)] transition-all">
+        <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-[0_4px_30px_rgba(0,0,0,0.1)] relative overflow-hidden group hover:border-gray-300 hover:shadow-[0_8px_40px_rgba(37,99,235,0.1)] transition-all">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-all"><FileText className="w-24 h-24 text-blue-400" /></div>
-          <h3 className="text-sm text-slate-400 font-bold uppercase tracking-wider">Total Files Scanned</h3>
-          <p className="text-4xl font-black mt-3 text-blue-400">{totalFilesScanned}</p>
+          <h3 className="text-sm text-gray-500 font-bold uppercase tracking-wider">Total Files Scanned</h3>
+          <p className="text-4xl font-black mt-3 text-blue-600">{totalFilesScanned}</p>
         </div>
-        <div className="p-6 bg-slate-900/50 backdrop-blur-2xl rounded-2xl border border-red-500/20 shadow-[0_4px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-red-500/40 hover:shadow-[0_8px_40px_rgba(239,68,68,0.15)] transition-all">
+        <div className="p-6 bg-white rounded-2xl border border-red-200 shadow-[0_4px_30px_rgba(0,0,0,0.1)] relative overflow-hidden group hover:border-red-300 hover:shadow-[0_8px_40px_rgba(239,68,68,0.1)] transition-all">
           <div className="absolute top-0 right-0 p-4 opacity-5 text-red-500 group-hover:opacity-10 transition-all"><AlertTriangle className="w-24 h-24" /></div>
-          <h3 className="text-sm text-red-400/80 font-bold uppercase tracking-wider">Total Critical Risk Files</h3>
-          <p className="text-4xl font-black mt-3 text-red-500">{totalCriticalRiskFiles}</p>
+          <h3 className="text-sm text-red-500 font-bold uppercase tracking-wider">Total Critical Risk Files</h3>
+          <p className="text-4xl font-black mt-3 text-red-600">{totalCriticalRiskFiles}</p>
         </div>
       </div>
 
       {/* High Risk Action Center */}
       {allHighRiskFiles.length > 0 && (
          <div className="mb-12">
-            <h2 className="text-xl font-bold text-red-400 mb-4 flex items-center drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]">
+            <h2 className="text-xl font-bold text-red-600 mb-4 flex items-center">
               <AlertTriangle className="w-5 h-5 mr-2" /> High Priority Action Center
             </h2>
-            <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.1)]">
               <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar space-y-3">
                  {allHighRiskFiles.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between bg-slate-950/80 border border-slate-800 p-4 rounded-xl hover:border-red-500/50 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setSelectedContainer(item.container); setViewMode('original'); setSelectedFileIndex(item.fileIndex); setActiveAnomaly(null); }}>
+                    <div key={i} className="flex items-center justify-between bg-gray-50 border border-gray-200 p-4 rounded-xl hover:border-red-400 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setSelectedContainer(item.container); setViewMode('original'); setSelectedFileIndex(item.fileIndex); setActiveAnomaly(null); }}>
                        <div className="flex items-center space-x-4">
                           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                           <div>
-                             <p className="font-bold text-slate-200">{item.file.name}</p>
-                             <p className="text-xs text-slate-400 mt-1">Audit: {item.container.name}</p>
+                             <p className="font-bold text-gray-800">{item.file.name}</p>
+                             <p className="text-xs text-gray-500 mt-1">Audit: {item.container.name}</p>
                           </div>
                        </div>
                        <div className="flex items-center space-x-4">
-                          <span className={`text-xs px-2.5 py-1 rounded-md font-bold ${item.file.investigation_status && item.file.investigation_status !== 'Unreviewed' ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                          <span className={`text-xs px-2.5 py-1 rounded-md font-bold ${item.file.investigation_status && item.file.investigation_status !== 'Unreviewed' ? 'bg-gray-200 text-gray-600 border border-gray-300' : 'bg-red-100 text-red-600 border border-red-300'}`}>
                              {item.file.investigation_status || 'Unreviewed'}
                           </span>
-                          <span className="text-sm font-black text-red-500">{item.file.score}% Score</span>
-                          <ChevronRight className="w-5 h-5 text-slate-500" />
+                          <span className="text-sm font-black text-red-600">{item.file.score}% Score</span>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
                        </div>
                     </div>
                  ))}
@@ -944,25 +1118,55 @@ export default function App() {
          </div>
       )}
 
-      {/* Active Audit Ledger */}
-      <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
-         <h2 className="text-lg font-semibold text-slate-100 flex items-center">
-            <Users className="w-5 h-5 mr-2 text-cyan-400" /> Active Audit Cases
-         </h2>
-         <button onClick={() => setActiveTab('new_entry')} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors flex items-center">
-            <PlusCircle className="w-4 h-4 mr-2" /> New Case
+
+      {/* Quick Action Button */}
+      <div className="text-center mt-8">
+        <button onClick={() => setActiveTab("audit_cases")} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-lg font-bold shadow-md transition-colors inline-flex items-center">
+          <FileText className="w-5 h-5 mr-2" /> View All Audit Cases
+        </button>
+      </div>
+
+    </div>
+  );
+
+
+  const renderAuditCasesView = () => {
+    // Filter cases by selected type
+    const filteredCases = auditCaseTypeFilter === 'all'
+      ? safeContainers
+      : safeContainers.filter(c => c.type && c.type.includes(auditCaseTypeFilter));
+
+    return (
+    <div className="p-8 lg:p-12 pb-32 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+         <div>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+              {auditCaseTypeFilter === 'all' ? 'All Audit Cases' : `${auditCaseTypeFilter} Cases`}
+            </h1>
+            <p className="text-gray-500 mt-1">Manage and review forensic audit cases</p>
+         </div>
+         <button
+           onClick={refreshData}
+           className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors border border-gray-300"
+         >
+           <Activity className="w-4 h-4" />
+           <span>Refresh</span>
          </button>
       </div>
 
       <div className="space-y-6">
-        {safeContainers.length === 0 ? (
-           <div className="text-center py-12 bg-slate-900/30 rounded-2xl border border-white/5 border-dashed">
-              <FileWarning className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-slate-400">No active audits found</h3>
-              <p className="text-slate-500 text-sm mt-2">Create a new entry to get started.</p>
+        {filteredCases.length === 0 ? (
+           <div className="text-center py-12 bg-gray-50 rounded-2xl border border-gray-200 border-dashed">
+              <FileWarning className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-gray-600">No audit cases found</h3>
+              <p className="text-gray-500 text-sm mt-2">
+                {auditCaseTypeFilter === 'all'
+                  ? "Create a new entry to get started."
+                  : `No cases with type "${auditCaseTypeFilter}" found.`}
+              </p>
            </div>
         ) : (
-           safeContainers.map((c) => (
+           filteredCases.map((c) => (
              <AuditCaseItem
                 key={c.id}
                 c={c}
@@ -971,23 +1175,51 @@ export default function App() {
                 onViewReport={(container, fileIdx) => { setSelectedContainer(container); setViewMode('original'); setSelectedFileIndex(fileIdx); setActiveAnomaly(null); }}
                 onCopyLink={copyToClipboard}
                 onOpenPortal={(id) => { setActiveCandidateUploadId(id); setActiveTab('candidate_portal'); }}
-                onUpdateFileStatus={(containerId, fileName, status) => {
-                   setContainers(prev => prev.map(con => {
-                      if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
-                         return { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === fileName ? { ...f, investigation_status: status } : f) } };
+                onUpdateFileStatus={async (containerId, fileName, status) => {
+                   let updatedCase = null;
+                   setContainers(prev => {
+                      const result = prev.map(con => {
+                         if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
+                            const updated = { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === fileName ? { ...f, investigation_status: status } : f) } };
+                            updatedCase = updated;
+                            return updated;
+                         }
+                         return con;
+                      });
+                      return result;
+                   });
+
+                   if (updatedCase && updatedCase.data) {
+                      try {
+                        await updateCase(containerId, { data: updatedCase.data });
+                      } catch (e) {
+                        console.error("Failed to sync investigation status:", e);
                       }
-                      return con;
-                   }));
+                   }
                 }}
-                onDeleteFile={(containerId, fileName) => {
-                   setContainers(prev => prev.map(con => {
-                      if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
-                         const newFiles = con.data.files.filter(f => f.name !== fileName);
-                         const newScore = newFiles.length > 0 ? Math.round(newFiles.reduce((acc, f) => acc + f.score, 0) / newFiles.length) : 0;
-                         return { ...con, data: { ...con.data, files: newFiles, score: newScore } };
+                onDeleteFile={async (containerId, fileName) => {
+                   let updatedCase = null;
+                   setContainers(prev => {
+                      const result = prev.map(con => {
+                         if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
+                            const newFiles = con.data.files.filter(f => f.name !== fileName);
+                            const newScore = newFiles.length > 0 ? Math.round(newFiles.reduce((acc, f) => acc + f.score, 0) / newFiles.length) : 0;
+                            const updated = { ...con, data: { ...con.data, files: newFiles, score: newScore } };
+                            updatedCase = updated;
+                            return updated;
+                         }
+                         return con;
+                      });
+                      return result;
+                   });
+
+                   if (updatedCase && updatedCase.data) {
+                      try {
+                         await updateCase(containerId, { data: updatedCase.data });
+                      } catch (e) {
+                        console.error("Failed to sync deleted file:", e);
                       }
-                      return con;
-                   }));
+                   }
                 }}
                 onRenameFile={(containerId, origIdx, currentName) => {
                    setFileToRename({ containerId, origIdx });
@@ -997,30 +1229,35 @@ export default function App() {
                    setActiveTab('marketplace');
                    setMarketplaceTab('discover');
                 }}
+                onOpenDetail={(caseData) => {
+                   setActiveAuditCase(caseData);
+                   setActiveDocTab('all');
+                }}
              />
            ))
         )}
       </div>
     </div>
   );
-
+    </div>
+};
   const renderNewEntryView = () => (
     <div className="p-8 lg:p-12 pb-32 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-black text-slate-100 mb-2">Create Audit Case</h1>
-      <p className="text-slate-400 mb-10 text-lg">Initialize a new secure forensic container for document analysis.</p>
+      <h1 className="text-3xl font-black text-gray-900 mb-2">Create Audit Case</h1>
+      <p className="text-gray-500 mb-10 text-lg">Initialize a new secure forensic container for document analysis.</p>
 
-      <div className="bg-slate-900/50 backdrop-blur-2xl rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.3)] border border-white/10 p-8">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8 border-b border-white/10 pb-6">
-          <div className="flex bg-slate-950/50 backdrop-blur-md rounded-lg p-1.5 self-start shadow-inner border border-white/5">
+      <div className="bg-white rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-gray-200 p-8">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8 border-b border-gray-200 pb-6">
+          <div className="flex bg-gray-100 rounded-lg p-1.5 self-start shadow-inner border border-gray-200">
             <button
               onClick={() => { setCreationMode('link'); setNewContainerName(''); }}
-              className={`px-6 py-2.5 rounded-md text-sm font-bold flex items-center transition-all ${creationMode === 'link' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+              className={`px-6 py-2.5 rounded-md text-sm font-bold flex items-center transition-all ${creationMode === 'link' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
             >
               <LinkIcon className="w-4 h-4 mr-2" /> Candidate Link
             </button>
             <button
               onClick={() => { setCreationMode('direct'); setNewContainerName(''); setDirectFiles([]); }}
-              className={`px-6 py-2.5 rounded-md text-sm font-bold flex items-center transition-all ${creationMode === 'direct' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+              className={`px-6 py-2.5 rounded-md text-sm font-bold flex items-center transition-all ${creationMode === 'direct' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
             >
               <UploadCloud className="w-4 h-4 mr-2" /> Direct Upload
             </button>
@@ -1031,19 +1268,19 @@ export default function App() {
           <form onSubmit={(e) => { handleDirectHRUpload(e); setActiveTab('scanner'); }} className="space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <label className="block text-sm font-bold text-slate-300 mb-2">Audit Case Name</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Audit Case Name</label>
                 <input
                   type="text"
                   placeholder="e.g., Q1 Engineering Intake - Ali"
                   value={newContainerName}
                   onChange={(e) => setNewContainerName(e.target.value)}
-                  className="w-full border border-white/10 rounded-lg p-4 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-950/50 shadow-inner text-slate-100 placeholder-slate-500 transition-all"
+                  className="w-full border border-gray-300 rounded-lg p-4 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm text-gray-900 placeholder-gray-400 transition-all"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-300 mb-2">Document Type</label>
-                <div className="w-full bg-slate-950/50 shadow-inner border border-white/10 rounded-lg p-4 h-32 overflow-y-auto custom-scrollbar">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Document Type</label>
+                <div className="w-full bg-gray-50 shadow-sm border border-gray-300 rounded-lg p-4 h-32 overflow-y-auto custom-scrollbar">
                   {['Resume', 'Payslip', 'Medical Certificate (MC)', 'Expense Receipt', 'Other'].map(type => (
                     <div key={type}>
                       <label className="flex items-center space-x-3 text-sm mb-3 cursor-pointer">
@@ -1051,9 +1288,9 @@ export default function App() {
                           type="checkbox"
                           checked={newContainerTypes.includes(type)}
                           onChange={(e) => e.target.checked ? setNewContainerTypes([...newContainerTypes, type]) : setNewContainerTypes(newContainerTypes.filter(t => t !== type))}
-                          className="w-4 h-4 text-blue-500 bg-slate-900 rounded border-white/10 focus:ring-blue-500"
+                          className="w-4 h-4 text-blue-600 bg-white rounded border-gray-300 focus:ring-blue-500"
                         />
-                        <span className="text-slate-300 font-medium">{type}</span>
+                        <span className="text-gray-700 font-medium">{type}</span>
                       </label>
                       {type === 'Other' && newContainerTypes.includes('Other') && (
                         <input
@@ -1061,7 +1298,7 @@ export default function App() {
                           placeholder="Specify custom document type..."
                           value={otherDocType}
                           onChange={(e) => setOtherDocType(e.target.value)}
-                          className="ml-7 mb-3 p-2 text-sm border border-white/10 bg-slate-900 text-slate-100 rounded outline-none focus:ring-1 focus:ring-blue-500 w-[85%]"
+                          className="ml-7 mb-3 p-2 text-sm border border-gray-300 bg-white text-gray-900 rounded outline-none focus:ring-1 focus:ring-blue-500 w-[85%]"
                           autoFocus
                         />
                       )}
@@ -1072,7 +1309,7 @@ export default function App() {
             </div>
 
             <div className="flex flex-col">
-              <div onClick={() => document.getElementById('directFileInput').click()} className="border-2 border-dashed border-white/20 hover:border-blue-500 rounded-xl p-12 text-center cursor-pointer bg-slate-950/50 hover:bg-slate-900 transition-colors group">
+              <div onClick={() => document.getElementById('directFileInput').click()} className="border-2 border-dashed border-gray-300 hover:border-blue-500 rounded-xl p-12 text-center cursor-pointer bg-gray-50 hover:bg-blue-50 transition-colors group">
                  <input
                    id="directFileInput"
                    type="file"
@@ -1090,19 +1327,19 @@ export default function App() {
                    onClick={(e) => e.stopPropagation()}
                  />
 
-                 <UploadCloud className="w-16 h-16 text-cyan-400 mx-auto mb-4 group-hover:scale-110 transition-transform" />
-                 <h3 className="text-xl font-bold text-slate-200 mb-2">Click or Drag & Drop multiple files</h3>
-                 <p className="text-slate-400 text-sm">Select all documents belonging to this case. They will be processed together immediately.</p>
+                 <UploadCloud className="w-16 h-16 text-cyan-500 mx-auto mb-4 group-hover:scale-110 transition-transform" />
+                 <h3 className="text-xl font-bold text-gray-800 mb-2">Click or Drag & Drop multiple files</h3>
+                 <p className="text-gray-500 text-sm">Select all documents belonging to this case. They will be processed together immediately.</p>
               </div>
 
               {directFiles.length > 0 && (
-                 <div className="bg-slate-950/50 border border-white/10 p-5 rounded-lg w-full text-left mt-6 shadow-inner">
-                   <p className="font-bold text-sm text-slate-300 mb-3 border-b border-white/10 pb-2">Selected Files ({directFiles.length}):</p>
+                 <div className="bg-white border border-gray-300 p-5 rounded-lg w-full text-left mt-6 shadow-sm">
+                   <p className="font-bold text-sm text-gray-700 mb-3 border-b border-gray-200 pb-2">Selected Files ({directFiles.length}):</p>
                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
                      {directFiles.map((f, i) => (
-                       <div key={i} className="flex items-center text-sm text-slate-400 mt-2">
-                         <CheckCircle className="w-4 h-4 text-emerald-400 mr-3 flex-shrink-0" />
-                         <span className="truncate font-medium text-slate-300">{f.name}</span>
+                       <div key={i} className="flex items-center text-sm text-gray-600 mt-2">
+                         <CheckCircle className="w-4 h-4 text-emerald-500 mr-3 flex-shrink-0" />
+                         <span className="truncate font-medium text-gray-800">{f.name}</span>
                        </div>
                      ))}
                    </div>
@@ -1110,26 +1347,26 @@ export default function App() {
               )}
             </div>
 
-            <button type="submit" disabled={directFiles.length === 0 || !newContainerName.trim()} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white px-6 py-4 rounded-lg font-bold shadow-lg transition-colors text-lg mt-4">
+            <button type="submit" disabled={directFiles.length === 0 || !newContainerName.trim()} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-300 disabled:to-gray-300 disabled:text-gray-500 text-white px-6 py-4 rounded-lg font-bold shadow-lg transition-colors text-lg mt-4">
               Upload & Analyze {directFiles.length > 0 ? `${directFiles.length} Files` : ''}
             </button>
           </form>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 animate-in fade-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)] rounded-full flex items-center justify-center mb-6">
-              <LinkIcon className="w-10 h-10 text-cyan-400" />
+            <div className="w-20 h-20 bg-blue-100 shadow-[0_0_15px_rgba(59,130,246,0.2)] rounded-full flex items-center justify-center mb-6">
+              <LinkIcon className="w-10 h-10 text-cyan-600" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-100 mb-2">Generate Candidate Link</h3>
-            <p className="text-slate-400 text-center max-w-md mb-8">Create a secure upload portal for a candidate. They will only see an upload screen and cannot access the dashboard.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Generate Candidate Link</h3>
+            <p className="text-gray-500 text-center max-w-md mb-8">Create a secure upload portal for a candidate. They will only see an upload screen and cannot access the dashboard.</p>
 
-            <div className="bg-slate-950/50 p-6 rounded-lg border border-white/10 w-full shadow-inner">
+            <div className="bg-white p-6 rounded-lg border border-gray-300 w-full shadow-sm">
             <form onSubmit={(e) => { handleCreateContainer(e); setActiveTab('scanner'); }} className="flex flex-col gap-6 animate-in fade-in duration-300">
             <div>
-              <label className="block text-sm font-bold text-slate-300 mb-2">Audit Case Name</label>
-              <input type="text" placeholder="e.g., Audit Case - Ahmad" value={newContainerName} onChange={(e) => setNewContainerName(e.target.value)} className="w-full bg-slate-900 border border-white/10 text-slate-100 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 outline-none mb-6 font-medium placeholder-slate-500 shadow-inner" required />
+              <label className="block text-sm font-bold text-gray-700 mb-2">Audit Case Name</label>
+              <input type="text" placeholder="e.g., Audit Case - Ahmad" value={newContainerName} onChange={(e) => setNewContainerName(e.target.value)} className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 outline-none mb-6 font-medium placeholder-gray-400 shadow-sm" required />
 
-              <label className="block text-sm font-bold text-slate-300 mb-2">Requested Documents</label>
-              <div className="w-full bg-slate-950/50 shadow-inner border border-white/10 rounded-lg p-4 h-40 overflow-y-auto custom-scrollbar mb-6">
+              <label className="block text-sm font-bold text-gray-700 mb-2">Requested Documents</label>
+              <div className="w-full bg-gray-50 shadow-sm border border-gray-300 rounded-lg p-4 h-40 overflow-y-auto custom-scrollbar mb-6">
                 {['Resume', 'Payslip', 'Medical Certificate (MC)', 'Expense Receipt', 'Other'].map(type => (
                   <div key={type}>
                     <label className="flex items-center space-x-3 text-sm mb-3 cursor-pointer">
@@ -1137,9 +1374,9 @@ export default function App() {
                         type="checkbox"
                         checked={newContainerTypes.includes(type)}
                         onChange={(e) => e.target.checked ? setNewContainerTypes([...newContainerTypes, type]) : setNewContainerTypes(newContainerTypes.filter(t => t !== type))}
-                        className="w-4 h-4 text-blue-500 bg-slate-900 rounded border-white/10 focus:ring-blue-500"
+                        className="w-4 h-4 text-blue-600 bg-white rounded border-gray-300 focus:ring-blue-500"
                       />
-                      <span className="text-slate-300 font-medium">{type}</span>
+                      <span className="text-gray-700 font-medium">{type}</span>
                     </label>
                     {type === 'Other' && newContainerTypes.includes('Other') && (
                       <input
@@ -1147,7 +1384,7 @@ export default function App() {
                         placeholder="Specify..."
                         value={otherDocType}
                         onChange={(e) => setOtherDocType(e.target.value)}
-                        className="ml-7 mb-3 p-2 text-sm border border-white/10 bg-slate-900 text-slate-100 rounded outline-none focus:ring-1 focus:ring-blue-500 w-[85%]"
+                        className="ml-7 mb-3 p-2 text-sm border border-gray-300 bg-white text-gray-900 rounded outline-none focus:ring-1 focus:ring-blue-500 w-[85%]"
                         autoFocus
                       />
                     )}
@@ -1179,25 +1416,25 @@ export default function App() {
     <div className="p-8 lg:p-12 pb-32 max-w-6xl mx-auto">
       <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 mb-1">Expert Interview Marketplace</h1>
-          <p className="text-slate-400">Hire verified industry professionals for technical interviews.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Expert Interview Marketplace</h1>
+          <p className="text-gray-500">Hire verified industry professionals for technical interviews.</p>
         </div>
-        <div className="bg-slate-900/50 p-1 rounded-lg border border-white/10 flex space-x-1">
-           <button onClick={() => setMarketplaceTab('discover')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${marketplaceTab === 'discover' ? 'bg-slate-800 text-slate-100 shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Find Experts</button>
-           <button onClick={() => setMarketplaceTab('bookings')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${marketplaceTab === 'bookings' ? 'bg-slate-800 text-slate-100 shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>My Bookings</button>
+        <div className="bg-gray-100 p-1 rounded-lg border border-gray-300 flex space-x-1">
+           <button onClick={() => setMarketplaceTab('discover')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${marketplaceTab === 'discover' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-600 hover:text-gray-900'}`}>Find Experts</button>
+           <button onClick={() => setMarketplaceTab('bookings')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${marketplaceTab === 'bookings' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-600 hover:text-gray-900'}`}>My Bookings</button>
         </div>
       </div>
 
       {marketplaceTab === 'discover' ? (
         <>
-          <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 rounded-2xl p-5 mb-6 flex flex-col md:flex-row gap-4 shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6 flex flex-col md:flex-row gap-4 shadow-sm">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Search</label>
-              <input type="text" value={searchExpertName} onChange={(e) => setSearchExpertName(e.target.value)} placeholder="Search by name..." className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
+              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Search</label>
+              <input type="text" value={searchExpertName} onChange={(e) => setSearchExpertName(e.target.value)} placeholder="Search by name..." className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400" />
             </div>
             <div className="w-full md:w-48">
-              <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Role</label>
-              <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Role</label>
+              <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 <option value="All">All Roles</option>
                 <option value="Technical Lead">Technical Lead</option>
                 <option value="AI Engineer">AI Engineer</option>
@@ -1208,8 +1445,8 @@ export default function App() {
               </select>
             </div>
             <div className="w-full md:w-48">
-              <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Price</label>
-              <select value={filterPriceRange} onChange={(e) => setFilterPriceRange(e.target.value)} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Price</label>
+              <select value={filterPriceRange} onChange={(e) => setFilterPriceRange(e.target.value)} className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 <option value="All">All Prices</option>
                 <option value="< RM 150">&lt; RM 150/hr</option>
                 <option value="RM 150 - RM 200">RM 150 - RM 200/hr</option>
@@ -1220,27 +1457,27 @@ export default function App() {
 
           <div className="flex flex-col gap-3">
             {filteredExperts.map(expert => (
-              <div key={expert.id} onClick={() => setSelectedExpertDetail(expert)} className="bg-slate-900/50 backdrop-blur-xl border border-white/10 p-5 hover:bg-slate-900/80 hover:border-white/20 hover:shadow-[0_8px_30px_rgba(37,99,235,0.15)] transition-all cursor-pointer flex flex-col md:flex-row gap-5 items-center rounded-2xl">
-                <img src={expert.image} alt={expert.name} className="w-14 h-14 rounded-full object-cover border-2 border-slate-700" />
+              <div key={expert.id} onClick={() => setSelectedExpertDetail(expert)} className="bg-white border border-gray-200 p-5 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row gap-5 items-center rounded-2xl">
+                <img src={expert.image} alt={expert.name} className="w-14 h-14 rounded-full object-cover border-2 border-gray-300" />
                 <div className="flex-1 text-center md:text-left">
-                  <h3 className="font-semibold text-slate-100">{expert.name}</h3>
-                  <p className="text-cyan-400 text-sm">{expert.role} · {expert.company}</p>
+                  <h3 className="font-semibold text-gray-900">{expert.name}</h3>
+                  <p className="text-cyan-600 text-sm">{expert.role} · {expert.company}</p>
                 </div>
 
                 <div className="flex items-center gap-6">
                   <div className="flex items-center text-sm">
                     <Star className="w-4 h-4 text-amber-400 fill-amber-400 mr-1" />
-                    <span className="font-medium text-slate-200">{expert.rating}</span>
-                    <span className="text-slate-500 ml-1">({expert.reviews})</span>
+                    <span className="font-medium text-gray-700">{expert.rating}</span>
+                    <span className="text-gray-500 ml-1">({expert.reviews})</span>
                   </div>
-                  <div className="text-sm font-medium text-emerald-400">RM {expert.rate}/hr</div>
-                  <button onClick={(e) => { e.stopPropagation(); setBookingExpert(expert); }} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:shadow-[0_0_25px_rgba(59,130,246,0.7)] whitespace-nowrap">Book</button>
+                  <div className="text-sm font-medium text-emerald-600">RM {expert.rate}/hr</div>
+                  <button onClick={(e) => { e.stopPropagation(); setBookingExpert(expert); }} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg whitespace-nowrap">Book</button>
                 </div>
               </div>
             ))}
             {filteredExperts.length === 0 && (
-              <div className="py-16 text-center bg-slate-900/30 border border-white/5 border-dashed rounded-2xl">
-                <p className="text-slate-500">No experts found matching your criteria.</p>
+              <div className="py-16 text-center bg-gray-50 border border-gray-200 border-dashed rounded-2xl">
+                <p className="text-gray-500">No experts found matching your criteria.</p>
               </div>
             )}
           </div>
@@ -1248,32 +1485,32 @@ export default function App() {
       ) : (
         <div className="flex flex-col gap-4">
            {myBookings.length === 0 ? (
-               <div className="text-center py-12 bg-slate-900/30 rounded-2xl border border-white/5 border-dashed">
-                  <h3 className="text-lg font-bold text-slate-400">No Bookings Yet</h3>
-                  <p className="text-slate-500 text-sm mt-2">Book an expert from the Find Experts tab to see them here.</p>
+               <div className="text-center py-12 bg-gray-50 rounded-2xl border border-gray-200 border-dashed">
+                  <h3 className="text-lg font-bold text-gray-600">No Bookings Yet</h3>
+                  <p className="text-gray-500 text-sm mt-2">Book an expert from the Find Experts tab to see them here.</p>
                </div>
            ) : myBookings.map((b) => (
-               <div key={b.id} className="bg-slate-900/50 backdrop-blur-xl border border-white/10 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+               <div key={b.id} className="bg-white border border-gray-200 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
                   <div className="flex items-center gap-4 w-full md:w-auto">
-                     <img src={b.expert.image} alt={b.expert.name} className="w-12 h-12 rounded-full border-2 border-slate-700 shadow-md" />
+                     <img src={b.expert.image} alt={b.expert.name} className="w-12 h-12 rounded-full border-2 border-gray-300 shadow-sm" />
                      <div>
-                        <h3 className="font-bold text-slate-100">{b.expert.name}</h3>
-                        <p className="text-xs text-cyan-400">{b.expert.role} @ {b.expert.company}</p>
-                        <p className="text-xs text-slate-500 mt-1">Booked on {b.dateBooked}</p>
+                        <h3 className="font-bold text-gray-900">{b.expert.name}</h3>
+                        <p className="text-xs text-cyan-600">{b.expert.role} @ {b.expert.company}</p>
+                        <p className="text-xs text-gray-500 mt-1">Booked on {b.dateBooked}</p>
                      </div>
                   </div>
                   <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
                      <div className="text-sm">
-                        <span className="text-slate-500 mr-2">Status:</span>
+                        <span className="text-gray-500 mr-2">Status:</span>
                         <span className={`font-bold px-2 py-1 rounded text-xs border ml-1 ${
-                           b.status === 'Not Shared' ? 'bg-slate-800 text-slate-400 border-slate-700' :
-                           b.status === 'Awaiting Feedback' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 animate-pulse' :
-                           'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                           b.status === 'Not Shared' ? 'bg-gray-100 text-gray-600 border-gray-300' :
+                           b.status === 'Awaiting Feedback' ? 'bg-blue-100 text-blue-600 border-blue-300 animate-pulse' :
+                           'bg-emerald-100 text-emerald-600 border-emerald-300'
                         }`}>{b.status}</span>
                      </div>
-                     
+
                      {b.status === 'Not Shared' && (
-                        <button onClick={() => { setShareCaseModal(b); setSelectedShareCase(''); setSelectedShareFiles([]); setShareMessage(''); }} className="w-full md:w-auto bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors">
+                        <button onClick={() => { setShareCaseModal(b); setSelectedShareCase(''); setSelectedShareFiles([]); setShareMessage(''); }} className="w-full md:w-auto bg-gray-100 hover:bg-gray-200 text-cyan-600 border border-gray-300 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors">
                            Share Audit Case
                         </button>
                      )}
@@ -1294,40 +1531,40 @@ export default function App() {
   const renderExpertRegistrationView = () => (
     <div className="p-8 lg:p-12 pb-32 max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-100 mb-1">Become an Expert Auditor</h1>
-        <p className="text-slate-400">Join our vetted marketplace of elite technical interviewers.</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Become an Expert Auditor</h1>
+        <p className="text-gray-500">Join our vetted marketplace of elite technical interviewers.</p>
       </div>
-      <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 rounded-2xl p-8 max-w-2xl shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
+      <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-2xl shadow-sm">
         <form onSubmit={(e) => { e.preventDefault(); setRegistrationSuccess(true); setTimeout(() => { setRegistrationSuccess(false); setActiveTab('marketplace'); }, 3000); }} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-bold text-slate-300 mb-2">Full Name</label>
-                <input type="text" required placeholder="e.g., Dr. Jane Doe" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
+                <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
+                <input type="text" required placeholder="e.g., Dr. Jane Doe" className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400 shadow-sm" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-300 mb-2">Current Role</label>
-                <input type="text" required placeholder="e.g., Lead Engineer" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
+                <label className="block text-sm font-bold text-gray-700 mb-2">Current Role</label>
+                <input type="text" required placeholder="e.g., Lead Engineer" className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400 shadow-sm" />
               </div>
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-300 mb-2">Company / Institution</label>
-            <input type="text" required placeholder="e.g., TechCorp Malaysia" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
+            <label className="block text-sm font-bold text-gray-700 mb-2">Company / Institution</label>
+            <input type="text" required placeholder="e.g., TechCorp Malaysia" className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400 shadow-sm" />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-300 mb-2">Primary Expertise (Comma separated)</label>
-            <input type="text" required placeholder="e.g., Java, Data Science, System Architecture" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
+            <label className="block text-sm font-bold text-gray-700 mb-2">Primary Expertise (Comma separated)</label>
+            <input type="text" required placeholder="e.g., Java, Data Science, System Architecture" className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400 shadow-sm" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-300 mb-2">Desired Hourly Rate (RM)</label>
-              <input type="number" required placeholder="e.g., 150" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
+              <label className="block text-sm font-bold text-gray-700 mb-2">Desired Hourly Rate (RM)</label>
+              <input type="number" required placeholder="e.g., 150" className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400 shadow-sm" />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-300 mb-2">LinkedIn Profile URL</label>
-              <input type="url" required placeholder="https://linkedin.com/in/..." className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
+              <label className="block text-sm font-bold text-gray-700 mb-2">LinkedIn Profile URL</label>
+              <input type="url" required placeholder="https://linkedin.com/in/..." className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400 shadow-sm" />
             </div>
           </div>
-          <button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3.5 rounded-lg mt-6 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.5)]">Submit Application</button>
+          <button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3.5 rounded-lg mt-6 transition-colors shadow-md">Submit Application</button>
         </form>
       </div>
     </div>
@@ -1479,6 +1716,217 @@ export default function App() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  const renderAuditCaseDetailView = () => {
+    if (!activeAuditCase) return null;
+    const c = activeAuditCase;
+
+    // Extract document types from the case type string
+    const docTypes = c.type ? c.type.split(' + ').map(t => t.trim()) : [];
+    const allFiles = Array.isArray(c.data?.files) ? c.data.files : [];
+
+    // Categorize files by document type
+    const categorizedFiles = {
+      'Resume': allFiles.filter(f => f.name.toLowerCase().includes('resume') || f.name.toLowerCase().includes('cv')),
+      'Payslip': allFiles.filter(f => f.name.toLowerCase().includes('payslip') || f.name.toLowerCase().includes('pay slip')),
+      'Medical Certificate (MC)': allFiles.filter(f => f.name.toLowerCase().includes('mc') || f.name.toLowerCase().includes('medical') || f.name.toLowerCase().includes('certificate')),
+      'Expense Receipt': allFiles.filter(f => f.name.toLowerCase().includes('receipt') || f.name.toLowerCase().includes('expense')),
+      'Other': allFiles.filter(f =>
+        !f.name.toLowerCase().includes('resume') &&
+        !f.name.toLowerCase().includes('cv') &&
+        !f.name.toLowerCase().includes('payslip') &&
+        !f.name.toLowerCase().includes('pay slip') &&
+        !f.name.toLowerCase().includes('mc') &&
+        !f.name.toLowerCase().includes('medical') &&
+        !f.name.toLowerCase().includes('receipt') &&
+        !f.name.toLowerCase().includes('expense')
+      )
+    };
+
+    // Get files to display based on active tab
+    let displayFiles = activeDocTab === 'all' ? allFiles : categorizedFiles[activeDocTab] || [];
+
+    // Available tabs based on case type
+    const docTypeTabs = docTypes.map(t => {
+      if (t.includes('Resume')) return 'Resume';
+      if (t.includes('Payslip')) return 'Payslip';
+      if (t.includes('MC') || t.includes('Medical')) return 'Medical Certificate (MC)';
+      if (t.includes('Expense') || t.includes('Receipt')) return 'Expense Receipt';
+      return 'Other';
+    });
+    const availableTabs = ['all', ...docTypeTabs];
+
+    // Remove duplicates
+    const uniqueTabs = [...new Set(availableTabs)];
+
+    return (
+      <div className="p-8 lg:p-12 pb-32 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <button onClick={() => setActiveAuditCase(null)} className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-colors">
+              <ArrowRight className="w-5 h-5 rotate-180" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{c.name}</h1>
+              <p className="text-gray-500 text-sm mt-1">
+                <span className="text-xs font-bold text-slate-500 uppercase">{c.id}</span>
+                {' · '}
+                {c.type}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            {c.data && (
+              <div className={`px-4 py-2 rounded-lg font-bold text-sm border ${
+                c.data.score < 40 ? 'bg-red-100 text-red-700 border-red-300' :
+                c.data.score < 70 ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                'bg-emerald-100 text-emerald-700 border-emerald-300'
+              }`}>
+                Risk Score: {c.data.score}%
+              </div>
+            )}
+            <button onClick={() => { setSelectedContainer(c); setViewMode('original'); setSelectedFileIndex(0); setActiveAnomaly(null); }} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+              View Full Report
+            </button>
+          </div>
+        </div>
+
+        {/* Document Type Tabs */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-2 mb-6 flex flex-wrap gap-2">
+          {uniqueTabs.map((tab) => {
+            const displayName = tab === 'all' ? 'All Documents' : tab;
+            const count = tab === 'all' ? allFiles.length : (categorizedFiles[tab] || []).length;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveDocTab(tab)}
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  activeDocTab === tab
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                {displayName} {count > 0 && `(${count})`}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Files List */}
+        {displayFiles.length === 0 ? (
+          <div className="text-center py-16 bg-gray-50 rounded-2xl border border-gray-200 border-dashed">
+            <FileWarning className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-600">No documents found</h3>
+            <p className="text-gray-500 text-sm mt-2">
+              {activeDocTab === 'all' ? 'No files have been uploaded for this case yet.' : `No ${activeDocTab} documents found.`}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {displayFiles.map((file, idx) => {
+              const isHighRisk = file.score < 40;
+              const origIdx = allFiles.findIndex(f => f.name === file.name);
+              return (
+                <div key={idx} className="bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-all">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex items-center min-w-0 overflow-hidden flex-1">
+                      <FileText className={`w-5 h-5 mr-4 flex-shrink-0 ${isHighRisk ? 'text-red-500' : 'text-blue-600'}`} />
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-gray-900 font-medium truncate">{file.name}</h4>
+                        <p className="text-gray-500 text-xs mt-1">
+                          {isHighRisk ? '⚠️ High risk detected' : '✓ Analysis complete'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-4 flex-shrink-0">
+                      <div className={`px-3 py-1.5 rounded-md text-sm font-bold whitespace-nowrap ${
+                        file.score >= 80 ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' :
+                        file.score < 40 ? 'bg-red-100 text-red-700 border border-red-300' :
+                        'bg-amber-100 text-amber-700 border border-amber-300'
+                      }`}>
+                        {file.score}%
+                      </div>
+
+                      {isHighRisk && (
+                        <select
+                          value={file.investigation_status || 'Unreviewed'}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value;
+                            let updatedData = null;
+
+                            setContainers(prev => prev.map(con => {
+                              if (con.id === c.id && con.data && Array.isArray(con.data.files)) {
+                                const updated = { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === file.name ? { ...f, investigation_status: newStatus } : f) } };
+                                updatedData = updated.data;
+                                return updated;
+                              }
+                              return con;
+                            }));
+
+                            setActiveAuditCase(prev => {
+                              if (!prev) return prev;
+                              return { ...prev, data: { ...prev.data, files: prev.data.files.map(f => f.name === file.name ? { ...f, investigation_status: newStatus } : f) } };
+                            });
+
+                            // Sync with API
+                            if (updatedData) {
+                              try {
+                                await updateCase(c.id, { data: updatedData });
+                              } catch (e) {
+                                console.error("Failed to sync status:", e);
+                              }
+                            }
+                          }}
+                          className={`text-xs rounded-md px-2 py-1.5 outline-none border font-medium ${
+                            file.investigation_status === 'Investigated - Fraud' ? 'bg-red-100 text-red-700 border-red-300' :
+                            file.investigation_status === 'Investigated - Not Scam' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                            file.investigation_status === 'Investigation Ongoing' ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                            'bg-gray-200 text-gray-600 border-gray-300'
+                          }`}
+                        >
+                          <option value="Unreviewed">Unreviewed</option>
+                          <option value="Investigation Ongoing">Investigating</option>
+                          <option value="Investigated - Not Scam">Cleared</option>
+                          <option value="Investigated - Fraud">Confirmed Fraud</option>
+                        </select>
+                      )}
+
+                      <button
+                        onClick={() => { setSelectedContainer(c); setViewMode('original'); setSelectedFileIndex(origIdx); setActiveAnomaly(null); }}
+                        className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                      >
+                        View Analysis
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Show flagged claims preview */}
+                  {isHighRisk && Array.isArray(file.flagged_claims) && file.flagged_claims.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Flagged Claims ({file.flagged_claims.length})</p>
+                      <div className="flex flex-wrap gap-2">
+                        {file.flagged_claims.slice(0, 3).map((claim, claimIdx) => (
+                          <span key={claimIdx} className="bg-red-100 text-red-700 border border-red-300 px-3 py-1 rounded-full text-xs font-medium">
+                            "{claim.claim?.substring(0, 30)}..."
+                          </span>
+                        ))}
+                        {file.flagged_claims.length > 3 && (
+                          <span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-medium">
+                            +{file.flagged_claims.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   };
@@ -1655,8 +2103,8 @@ export default function App() {
                 <button onClick={() => document.getElementById('faq')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">FAQ</button>
               </div>
               <div className="flex items-center space-x-4">
-                <button onClick={() => setActiveTab('scanner')} className="hidden sm:block text-slate-400 hover:text-white text-sm font-medium transition-colors">Sign In</button>
-                <button onClick={() => setActiveTab('scanner')} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-cyan-500/25 transition-all">
+                <button onClick={() => setActiveTab('new_entry')} className="hidden sm:block text-slate-400 hover:text-white text-sm font-medium transition-colors">Sign In</button>
+                <button onClick={() => setActiveTab('new_entry')} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-cyan-500/25 transition-all">
                   Start Free Trial
                 </button>
               </div>
@@ -1689,7 +2137,7 @@ export default function App() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                 <button
-                  onClick={() => setActiveTab('scanner')}
+                  onClick={() => setActiveTab('new_entry')}
                   className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-8 py-4 rounded-xl text-base font-semibold shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center group"
                 >
                   Start Free Trial
@@ -1936,7 +2384,7 @@ export default function App() {
                       <span className="text-slate-400">{plan.period}</span>
                     </div>
                     <button
-                      onClick={() => setActiveTab('scanner')}
+                      onClick={() => setActiveTab('new_entry')}
                       className={`w-full py-3 rounded-xl font-semibold mb-6 transition-all ${
                         plan.popular
                           ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25 hover:from-cyan-400 hover:to-blue-500'
@@ -2045,10 +2493,13 @@ export default function App() {
       <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[50%] bg-blue-500/10 rounded-full blur-[200px] pointer-events-none"></div>
 
       {activeTab === 'landing' ? renderLandingPage() : (
-        <div className="z-10 flex h-screen w-full relative">
+        <div className="z-10 flex h-screen w-full relative bg-gray-100">
           {renderSidebar()}
-          <main className="flex-1 h-screen overflow-y-auto relative bg-slate-950/50 backdrop-blur-sm z-10 border-l border-white/5">
-            {activeTab === 'scanner' && renderForensicScannerView()}
+          <main className="flex-1 h-screen overflow-y-auto relative bg-gray-50 backdrop-blur-sm z-10 border-l border-gray-200">
+            {activeTab === 'scanner' && !activeAuditCase && renderForensicScannerView()}
+            {activeTab === 'scanner' && activeAuditCase && renderAuditCaseDetailView()}
+            {activeTab === 'audit_cases' && !activeAuditCase && renderAuditCasesView()}
+            {activeTab === 'audit_cases' && activeAuditCase && renderAuditCaseDetailView()}
             {activeTab === 'new_entry' && renderNewEntryView()}
             {activeTab === 'marketplace' && renderMarketplaceView()}
             {activeTab === 'register' && renderExpertRegistrationView()}
@@ -2150,5 +2601,5 @@ export default function App() {
          </div>
       )}
     </div>
-  );
+);
 }
