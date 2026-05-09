@@ -221,6 +221,10 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
 export default function App() {
   const isExternalLink = new URLSearchParams(window.location.search).get('upload') !== null;
   const [activeTab, setActiveTab] = useState(isExternalLink ? 'candidate_portal' : 'landing'); 
+  // Audit cases view state
+  const [caseSearch, setCaseSearch] = useState('');
+  const [caseSortBy, setCaseSortBy] = useState('newest');
+
   
   const [containers, setContainers] = useState(() => {
     try {
@@ -1148,9 +1152,6 @@ export default function App() {
 
 
   const renderAuditCasesView = () => {
-    // Add local state for search and sort
-    const [caseSearch, setCaseSearch] = useState('');
-    const [caseSortBy, setCaseSortBy] = useState('newest');
 
     // Filter cases by selected type and search
     let filteredCases = auditCaseTypeFilter === 'all'
