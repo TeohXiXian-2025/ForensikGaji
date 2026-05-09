@@ -605,39 +605,51 @@ export default function App() {
         });
       }
 
-      const avgScore = uploadedFilesData.length > 0 
+      const avgScore = uploadedFilesData.length > 0
         ? Math.round(uploadedFilesData.reduce((acc, f) => acc + f.score, 0) / uploadedFilesData.length)
         : 0;
 
-      setContainers(prev => {
-        const safePrev = Array.isArray(prev) ? prev : [];
-        const newContainers = safePrev.map(c => {
-          if (c && c.id === newId) {
-            return {
-              ...c,
-              status: 'completed',
-              data: {
-                score: avgScore,
-                date: new Date().toLocaleDateString(),
-                clash_detected: false,
-                files: uploadedFilesData
-              }
-            };
-          }
-          return c;
+      // Use API to add files to the case (enables persistence)
+      try {
+        const updatedCase = await addFilesToCase(newId, uploadedFilesData);
+        setContainers(prev => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          return safePrev.map(c => c?.id === newId ? updatedCase : c);
         });
-        
-        try {
-          const updatedContainer = newContainers.find(c => c && c.id === newId);
-          if (updatedContainer) {
-            const bc = new BroadcastChannel('forensik_sync');
-            bc.postMessage({ type: 'UPDATE_CASE', payload: updatedContainer });
-            bc.close();
-          }
-        } catch(e) { console.warn("Sync skipped for large payload"); }
-        
-        return newContainers;
-      });
+      } catch (apiError) {
+        console.error("API upload failed, using local fallback:", apiError);
+
+        // Fallback to local state management (files won't persist after refresh)
+        setContainers(prev => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          const newContainers = safePrev.map(c => {
+            if (c && c.id === newId) {
+              return {
+                ...c,
+                status: 'completed',
+                data: {
+                  score: avgScore,
+                  date: new Date().toLocaleDateString(),
+                  clash_detected: false,
+                  files: uploadedFilesData
+                }
+              };
+            }
+            return c;
+          });
+
+          try {
+            const updatedContainer = newContainers.find(c => c && c.id === newId);
+            if (updatedContainer) {
+              const bc = new BroadcastChannel('forensik_sync');
+              bc.postMessage({ type: 'UPDATE_CASE', payload: updatedContainer });
+              bc.close();
+            }
+          } catch(e) { console.warn("Sync skipped for large payload"); }
+
+          return newContainers;
+        });
+      }
 
       setToastMessage(`✅ Case Complete: ${filesToProcess.length} documents analyzed.`);
       setTimeout(() => setToastMessage(null), 4000);
