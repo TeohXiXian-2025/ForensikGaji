@@ -180,7 +180,6 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
                <button onClick={() => onOpenPortal(c.id)} className="text-blue-600 font-mono text-xs truncate max-w-[140px] hover:underline" title={c.link}>{c.link}</button>
                <button onClick={() => onCopyLink(c.link)} className="p-1 hover:bg-gray-200 rounded text-gray-400 transition-colors"><Copy className="w-4 h-4" /></button>
              </div>
-             <p className="text-xs text-gray-500 italic">💡 Share this link with candidate. Keep dashboard open for real-time sync (same browser).</p>
           </div>
         )}
 
@@ -1088,35 +1087,41 @@ export default function App() {
       </div>
 
       {/* High Risk Action Center */}
-      {allHighRiskFiles.length > 0 && (
-         <div className="mb-12">
-            <h2 className="text-xl font-bold text-red-600 mb-4 flex items-center">
-              <AlertTriangle className="w-5 h-5 mr-2" /> High Priority Action Center
-            </h2>
-            <div className="bg-white border border-gray-200 rounded-2xl p-6 overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.1)]">
-              <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                 {allHighRiskFiles.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between bg-gray-50 border border-gray-200 p-4 rounded-xl hover:border-red-400 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setSelectedContainer(item.container); setViewMode('original'); setSelectedFileIndex(item.fileIndex); setActiveAnomaly(null); }}>
-                       <div className="flex items-center space-x-4">
-                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                          <div>
-                             <p className="font-bold text-gray-800">{item.file.name}</p>
-                             <p className="text-xs text-gray-500 mt-1">Audit: {item.container.name}</p>
-                          </div>
-                       </div>
-                       <div className="flex items-center space-x-4">
-                          <span className={`text-xs px-2.5 py-1 rounded-md font-bold ${item.file.investigation_status && item.file.investigation_status !== 'Unreviewed' ? 'bg-gray-200 text-gray-600 border border-gray-300' : 'bg-red-100 text-red-600 border border-red-300'}`}>
-                             {item.file.investigation_status || 'Unreviewed'}
-                          </span>
-                          <span className="text-sm font-black text-red-600">{item.file.score}% Score</span>
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
-                       </div>
+      <div className="mb-12">
+        <h2 className="text-xl font-bold text-red-600 mb-4 flex items-center">
+          <AlertTriangle className="w-5 h-5 mr-2" /> High Priority Action Center
+        </h2>
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.1)]">
+          {allHighRiskFiles.length > 0 ? (
+            <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+              {allHighRiskFiles.map((item, i) => (
+                <div key={i} className="flex items-center justify-between bg-gray-50 border border-gray-200 p-4 rounded-xl hover:border-red-400 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setSelectedContainer(item.container); setViewMode('original'); setSelectedFileIndex(item.fileIndex); setActiveAnomaly(null); }}>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                    <div>
+                      <p className="font-bold text-gray-800">{item.file.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">Audit: {item.container.name}</p>
                     </div>
-                 ))}
-              </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <span className={`text-xs px-2.5 py-1 rounded-md font-bold ${item.file.investigation_status && item.file.investigation_status !== 'Unreviewed' ? 'bg-gray-200 text-gray-600 border border-gray-300' : 'bg-red-100 text-red-600 border border-red-300'}`}>
+                      {item.file.investigation_status || 'Unreviewed'}
+                    </span>
+                    <span className="text-sm font-black text-red-600">{item.file.score}% Score</span>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+              ))}
             </div>
-         </div>
-      )}
+          ) : (
+            <div className="text-center py-8">
+              <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+              <p className="text-gray-600 font-medium">No high-risk files requiring immediate action</p>
+              <p className="text-gray-500 text-sm mt-1">All documents are within acceptable risk parameters</p>
+            </div>
+          )}
+        </div>
+      </div>
 
 
       {/* Quick Action Button */}
@@ -1131,14 +1136,41 @@ export default function App() {
 
 
   const renderAuditCasesView = () => {
-    // Filter cases by selected type
-    const filteredCases = auditCaseTypeFilter === 'all'
+    // Add local state for search and sort
+    const [caseSearch, setCaseSearch] = useState('');
+    const [caseSortBy, setCaseSortBy] = useState('newest');
+
+    // Filter cases by selected type and search
+    let filteredCases = auditCaseTypeFilter === 'all'
       ? safeContainers
       : safeContainers.filter(c => c.type && c.type.includes(auditCaseTypeFilter));
 
+    // Apply search filter
+    if (caseSearch) {
+      filteredCases = filteredCases.filter(c =>
+        c.name.toLowerCase().includes(caseSearch.toLowerCase()) ||
+        c.id.toLowerCase().includes(caseSearch.toLowerCase())
+      );
+    }
+
+    // Apply sorting
+    if (caseSortBy === 'newest') {
+      filteredCases = [...filteredCases].sort((a, b) => b.id.localeCompare(a.id));
+    } else if (caseSortBy === 'oldest') {
+      filteredCases = [...filteredCases].sort((a, b) => a.id.localeCompare(b.id));
+    } else if (caseSortBy === 'name_asc') {
+      filteredCases = [...filteredCases].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (caseSortBy === 'name_desc') {
+      filteredCases = [...filteredCases].sort((a, b) => b.name.localeCompare(a.name));
+    } else if (caseSortBy === 'risk_high') {
+      filteredCases = [...filteredCases].sort((a, b) => (a.data?.score || 100) - (b.data?.score || 100));
+    } else if (caseSortBy === 'risk_low') {
+      filteredCases = [...filteredCases].sort((a, b) => (b.data?.score || 100) - (a.data?.score || 100));
+    }
+
     return (
     <div className="p-8 lg:p-12 pb-32 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
          <div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tight">
               {auditCaseTypeFilter === 'all' ? 'All Audit Cases' : `${auditCaseTypeFilter} Cases`}
@@ -1152,6 +1184,32 @@ export default function App() {
            <Activity className="w-4 h-4" />
            <span>Refresh</span>
          </button>
+      </div>
+
+      {/* Search and Sort Bar */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-3 shadow-sm">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search case name or ID..."
+            value={caseSearch}
+            onChange={(e) => setCaseSearch(e.target.value)}
+            className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+        <select
+          value={caseSortBy}
+          onChange={(e) => setCaseSortBy(e.target.value)}
+          className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="newest">Sort: Newest First</option>
+          <option value="oldest">Sort: Oldest First</option>
+          <option value="name_asc">Sort: Name (A-Z)</option>
+          <option value="name_desc">Sort: Name (Z-A)</option>
+          <option value="risk_high">Sort: Highest Risk</option>
+          <option value="risk_low">Sort: Lowest Risk</option>
+        </select>
       </div>
 
       <div className="space-y-6">
@@ -1572,19 +1630,19 @@ export default function App() {
 
   const renderCandidatePortalView = () => {
     const activeContainer = safeContainers.find(c => c && c.id === activeCandidateUploadId);
-    if (!activeContainer) return (<div className="fixed inset-0 bg-slate-950 text-slate-100 z-50 flex flex-col p-6 items-center justify-center"><Activity className="w-12 h-12 text-cyan-400 animate-spin mb-4" /><h2 className="text-xl font-bold">Connecting to HR Dashboard...</h2></div>);
-    if (isClosed) return (<div className="fixed inset-0 bg-slate-950 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-slate-900/50 backdrop-blur-2xl w-full max-w-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.4)] border border-white/10 p-10 text-center animate-in fade-in zoom-in duration-300"><CheckCircle className="w-20 h-20 text-emerald-400 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-100 mb-4">Upload Securely Transmitted</h2><p className="text-slate-400 mb-8 font-medium">Your documents have been actively synced to the HR dashboard.</p><div className="bg-slate-950/50 rounded-xl p-4 border border-white/10"><p className="text-slate-300 font-bold">You may now safely close this browser tab.</p></div></div></div>);
-    return (<div className="fixed inset-0 bg-slate-950 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-slate-900/50 backdrop-blur-2xl w-full max-w-xl rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.4)] border border-white/10 p-10 text-center"><h2 className="text-2xl font-bold text-slate-100 mb-8">Secure Document Upload</h2>{uploadSuccess && <div className="py-6 flex flex-col items-center bg-emerald-500/20 rounded-xl mb-4 border border-emerald-500/30"><CheckCircle className="w-10 h-10 text-emerald-400 mb-2" /><h3 className="text-lg font-bold text-emerald-400">Files successfully added!</h3><p className="text-emerald-500 text-sm">You can select more files or click finish below.</p></div>}
+    if (!activeContainer) return (<div className="fixed inset-0 bg-gray-100 text-gray-900 z-50 flex flex-col p-6 items-center justify-center"><Activity className="w-12 h-12 text-blue-600 animate-spin mb-4" /><h2 className="text-xl font-bold">Connecting to HR Dashboard...</h2></div>);
+    if (isClosed) return (<div className="fixed inset-0 bg-gray-100 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-white w-full max-w-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-gray-200 p-10 text-center animate-in fade-in zoom-in duration-300"><CheckCircle className="w-20 h-20 text-emerald-600 mx-auto mb-6" /><h2 className="text-2xl font-black text-gray-900 mb-4">Upload Securely Transmitted</h2><p className="text-gray-600 mb-8 font-medium">Your documents have been actively synced to the HR dashboard.</p><div className="bg-gray-50 rounded-xl p-4 border border-gray-200"><p className="text-gray-700 font-bold">You may now safely close this browser tab.</p></div></div></div>);
+    return (<div className="fixed inset-0 bg-gray-100 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-white w-full max-w-xl rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-gray-200 p-10 text-center"><h2 className="text-2xl font-bold text-gray-900 mb-8">Secure Document Upload</h2>{uploadSuccess && <div className="py-6 flex flex-col items-center bg-emerald-50 rounded-xl mb-4 border border-emerald-200"><CheckCircle className="w-10 h-10 text-emerald-600 mb-2" /><h3 className="text-lg font-bold text-emerald-600">Files successfully added!</h3><p className="text-emerald-700 text-sm">You can select more files or click finish below.</p></div>}
 
     {!isUploading && !uploadSuccess && (
       <div className="mb-6 text-left">
-        <label className="block text-sm font-bold text-slate-300 mb-2">Rename File(s) (Optional)</label>
-        <input type="text" value={candidateCustomName} onChange={(e) => setCandidateCustomName(e.target.value)} placeholder="e.g., JohnDoe-Resume" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500 mb-2" />
-        <p className="text-xs text-slate-500">If multiple files are uploaded, a number will be added to the name.</p>
+        <label className="block text-sm font-bold text-gray-700 mb-2">Rename File(s) (Optional)</label>
+        <input type="text" value={candidateCustomName} onChange={(e) => setCandidateCustomName(e.target.value)} placeholder="e.g., JohnDoe-Resume" className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400 mb-2" />
+        <p className="text-xs text-gray-500">If multiple files are uploaded, a number will be added to the name.</p>
       </div>
     )}
 
-    {isUploading ? (<div className="py-12 flex flex-col items-center"><Activity className="w-12 h-12 text-cyan-400 animate-pulse mb-4" /><p className="font-bold text-slate-300">Analyzing Document Integrity...</p></div>) : (<div onClick={() => document.getElementById('fileInput').click()} className="border-2 border-dashed border-white/20 bg-slate-950/50 shadow-inner rounded-xl p-12 cursor-pointer hover:bg-slate-900 hover:border-blue-500 transition-colors"><input id="fileInput" type="file" multiple className="hidden" onChange={handleCandidateUpload} onClick={(e) => e.stopPropagation()} /><FileDown className="w-12 h-12 text-cyan-400 mx-auto mb-4" /><h3 className="text-lg font-bold text-slate-200">Click to select files</h3><p className="text-slate-400 text-xs mt-2">You can select multiple documents at once.</p></div>)}{!isUploading && <button onClick={() => { if (!isExternalLink) { setActiveTab('scanner'); setActiveCandidateUploadId(null); window.history.replaceState(null, '', window.location.pathname); } else { setIsClosed(true); } }} className="mt-8 w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-4 rounded-xl text-lg font-bold shadow-[0_4px_20px_rgba(59,130,246,0.3)] hover:from-cyan-400 hover:to-blue-500 transition-colors">{isExternalLink ? "Finish and Close Tab" : "Finish and Return"}</button>}</div></div>);
+    {isUploading ? (<div className="py-12 flex flex-col items-center"><Activity className="w-12 h-12 text-blue-600 animate-pulse mb-4" /><p className="font-bold text-gray-700">Analyzing Document Integrity...</p></div>) : (<div onClick={() => document.getElementById('fileInput').click()} className="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-12 cursor-pointer hover:bg-gray-100 hover:border-blue-400 transition-colors"><input id="fileInput" type="file" multiple className="hidden" onChange={handleCandidateUpload} onClick={(e) => e.stopPropagation()} /><FileDown className="w-12 h-12 text-blue-600 mx-auto mb-4" /><h3 className="text-lg font-bold text-gray-900">Click to select files</h3><p className="text-gray-500 text-xs mt-2">You can select multiple documents at once.</p></div>)}{!isUploading && <button onClick={() => { if (!isExternalLink) { setActiveTab('scanner'); setActiveCandidateUploadId(null); window.history.replaceState(null, '', window.location.pathname); } else { setIsClosed(true); } }} className="mt-8 w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-4 rounded-xl text-lg font-bold shadow-[0_4px_20px_rgba(59,130,246,0.3)] hover:from-cyan-400 hover:to-blue-500 transition-colors">{isExternalLink ? "Finish and Close Tab" : "Finish and Return"}</button>}</div></div>);
   };
 
   const renderSplitScreenModal = () => {
@@ -1597,22 +1655,22 @@ export default function App() {
     const isPdfPreview = viewMode === 'original' && (activeFile.original?.startsWith('data:application/pdf') || activeFile.original?.toLowerCase().endsWith('.pdf'));
 
     return (
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4 lg:p-8">
-        <div className="bg-slate-900/50 backdrop-blur-2xl w-full max-w-7xl h-[90vh] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-white/10">
-          <div className="flex justify-between items-center px-8 py-5 border-b border-white/10 bg-slate-950/80">
-            <div className="flex items-center space-x-4"><div className={`p-2.5 rounded-lg shadow-inner border ${isHighRisk ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>{isHighRisk ? <AlertTriangle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}</div><div><h2 className="text-lg font-semibold text-slate-100">Audit Report: {selectedContainer.name}</h2><p className="text-slate-400 text-xs mt-0.5 font-medium">Sovereign Forensic Layer v2.0</p></div></div>
-            <div className="flex items-center space-x-3"><button onClick={handleExportPDF} disabled={isExportingPDF} className="flex items-center px-4 py-2 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg hover:bg-slate-700 transition-colors font-bold text-sm shadow-inner disabled:opacity-50">{isExportingPDF ? <Activity className="w-4 h-4 mr-2 animate-spin text-cyan-400" /> : <Download className="w-4 h-4 mr-2" />} {isExportingPDF ? 'Generating...' : 'Export PDF'}</button><button onClick={() => { setSelectedContainer(null); setActiveAnomaly(null); setViewMode('original'); }} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-6 h-6" /></button></div>
+      <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4 lg:p-8">
+        <div className="bg-white w-full max-w-7xl h-[90vh] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.2)] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-gray-200">
+          <div className="flex justify-between items-center px-8 py-5 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center space-x-4"><div className={`p-2.5 rounded-lg shadow-sm border ${isHighRisk ? 'bg-red-100 text-red-600 border-red-200' : 'bg-emerald-100 text-emerald-600 border-emerald-200'}`}>{isHighRisk ? <AlertTriangle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}</div><div><h2 className="text-lg font-semibold text-gray-900">Audit Report: {selectedContainer.name}</h2><p className="text-gray-500 text-xs mt-0.5 font-medium">Sovereign Forensic Layer v2.0</p></div></div>
+            <div className="flex items-center space-x-3"><button onClick={handleExportPDF} disabled={isExportingPDF} className="flex items-center px-4 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-bold text-sm shadow-sm disabled:opacity-50">{isExportingPDF ? <Activity className="w-4 h-4 mr-2 animate-spin text-blue-600" /> : <Download className="w-4 h-4 mr-2" />} {isExportingPDF ? 'Generating...' : 'Export PDF'}</button><button onClick={() => { setSelectedContainer(null); setActiveAnomaly(null); setViewMode('original'); }} className="p-2 hover:bg-gray-200 rounded-full text-gray-500 hover:text-gray-900 transition-colors"><X className="w-6 h-6" /></button></div>
           </div>
           <div className="flex flex-1 overflow-hidden">
-            <div className="w-1/2 p-8 border-r border-white/10 overflow-y-auto bg-slate-900/30">
+            <div className="w-1/2 p-8 border-r border-gray-200 overflow-y-auto bg-gray-50">
               <div className="flex justify-between mb-8 items-start">
                 <div>
-                  <p className="text-slate-400 font-medium mb-1">Document Trust</p>
-                  <div className={`text-6xl font-black drop-shadow-md ${isHighRisk ? 'text-red-400' : 'text-emerald-400'}`}>{activeFile.score}%</div>
+                  <p className="text-gray-500 font-medium mb-1">Document Trust</p>
+                  <div className={`text-6xl font-black drop-shadow-md ${isHighRisk ? 'text-red-600' : 'text-emerald-600'}`}>{activeFile.score}%</div>
                 </div>
                 <div className="text-right flex flex-col items-end">
-                  <p className="text-slate-400 font-medium mb-1">AI Status</p>
-                  <div className={`px-4 py-1.5 rounded-full font-bold border mb-3 shadow-inner ${isHighRisk ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>{isHighRisk ? 'FRAUD DETECTED' : 'AUTHENTIC'}</div>
+                  <p className="text-gray-500 font-medium mb-1">AI Status</p>
+                  <div className={`px-4 py-1.5 rounded-full font-bold border mb-3 shadow-sm ${isHighRisk ? 'bg-red-100 text-red-600 border-red-200' : 'bg-emerald-100 text-emerald-600 border-emerald-200'}`}>{isHighRisk ? 'FRAUD DETECTED' : 'AUTHENTIC'}</div>
 
                   {isHighRisk && (
                     <select
@@ -1631,10 +1689,10 @@ export default function App() {
                         });
                       }}
                       className={`text-xs w-48 rounded-md px-2 py-1 outline-none border font-bold shadow-sm transition-colors cursor-pointer ${
-                        activeFile.investigation_status === 'Investigated - Fraud' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                        activeFile.investigation_status === 'Investigated - Not Scam' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                        activeFile.investigation_status === 'Investigation Ongoing' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-                        'bg-slate-950/80 text-slate-300 border-white/10'
+                        activeFile.investigation_status === 'Investigated - Fraud' ? 'bg-red-100 text-red-600 border-red-200' :
+                        activeFile.investigation_status === 'Investigated - Not Scam' ? 'bg-emerald-100 text-emerald-600 border-emerald-200' :
+                        activeFile.investigation_status === 'Investigation Ongoing' ? 'bg-amber-100 text-amber-600 border-amber-200' :
+                        'bg-gray-100 text-gray-600 border-gray-300'
                       }`}
                     >
                       <option value="Unreviewed">HR: Unreviewed</option>
@@ -1646,40 +1704,40 @@ export default function App() {
                 </div>
               </div>
 
-              <div className={`p-6 rounded-2xl mb-8 border shadow-inner ${isHighRisk ? 'bg-red-500/10 border-red-500/20' : 'bg-slate-950/50 border-white/10'}`}><h4 className="font-bold flex items-center mb-2 text-slate-100"><Activity className="w-5 h-5 mr-2 text-cyan-400" /> AI Verdict</h4><p className="font-medium text-slate-300 leading-relaxed">{activeFile.issue}</p></div>
+              <div className={`p-6 rounded-2xl mb-8 border shadow-sm ${isHighRisk ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}><h4 className="font-bold flex items-center mb-2 text-gray-900"><Activity className="w-5 h-5 mr-2 text-blue-600" /> AI Verdict</h4><p className="font-medium text-gray-700 leading-relaxed">{activeFile.issue}</p></div>
               {Array.isArray(activeFile.flagged_claims) && activeFile.flagged_claims.map((claim, idx) => (
-                <div key={idx} onClick={() => setActiveAnomaly(activeAnomaly === idx ? null : idx)} className={`bg-slate-950/50 border rounded-2xl p-4 shadow-inner mb-4 cursor-pointer transition-all ${activeAnomaly === idx ? 'ring-2 ring-yellow-500/50 border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'border-white/10 hover:border-blue-500/50 hover:shadow-lg'}`}>
-                  <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 font-mono text-xs px-2 py-1 rounded mb-3 inline-block font-bold">Extract: "{claim.claim}"</div>
+                <div key={idx} onClick={() => setActiveAnomaly(activeAnomaly === idx ? null : idx)} className={`bg-white border rounded-2xl p-4 shadow-sm mb-4 cursor-pointer transition-all ${activeAnomaly === idx ? 'ring-2 ring-yellow-500/50 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'border-gray-200 hover:border-blue-400 hover:shadow-md'}`}>
+                  <div className="bg-yellow-100 border border-yellow-300 text-yellow-700 font-mono text-xs px-2 py-1 rounded mb-3 inline-block font-bold">Extract: "{claim.claim}"</div>
 
-                  <p className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg mb-2 border border-red-500/20 shadow-inner">
+                  <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg mb-2 border border-red-200 shadow-sm">
                     <span className="font-bold">Flag:</span> {claim.hr_note}
                   </p>
 
                   {claim.interview_question && (
-                    <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20 shadow-inner">
-                      <p className="text-blue-300 text-sm">
-                        <span className="font-bold text-cyan-400">Suggested Question:</span> {claim.interview_question}
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 shadow-sm">
+                      <p className="text-blue-700 text-sm">
+                        <span className="font-bold text-cyan-600">Suggested Question:</span> {claim.interview_question}
                       </p>
                     </div>
                   )}
 
-                  {!claim.box_hidden && <p className="text-xs text-slate-500 mt-3 font-bold text-right hover:text-cyan-400">Click to locate on document ➔</p>}
+                  {!claim.box_hidden && <p className="text-xs text-gray-500 mt-3 font-bold text-right hover:text-blue-600">Click to locate on document ➔</p>}
                 </div>
               ))}
             </div>
 
-            <div className="w-1/2 bg-slate-950/80 backdrop-blur-xl border-l border-white/5 flex flex-col relative overflow-hidden">
-              {Array.isArray(report.files) && <div className="bg-slate-900/50 backdrop-blur-2xl border-b border-white/10 px-4 pt-4 flex space-x-2 overflow-x-auto z-20 shadow-sm">{report.files.map((f, idx) => (<button key={idx} onClick={() => { setSelectedFileIndex(idx); setViewMode('original'); setActiveAnomaly(null); }} className={`px-4 py-2.5 text-sm font-bold rounded-t-lg transition-colors border-t border-l border-r ${selectedFileIndex === idx ? 'bg-slate-800 text-blue-400 border-white/20' : 'bg-transparent text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-slate-200'}`}>{typeof f === 'string' ? f : f.name}</button>))}</div>}
+            <div className="w-1/2 bg-gray-100 border-l border-gray-200 flex flex-col relative overflow-hidden">
+              {Array.isArray(report.files) && <div className="bg-white border-b border-gray-200 px-4 pt-4 flex space-x-2 overflow-x-auto z-20 shadow-sm">{report.files.map((f, idx) => (<button key={idx} onClick={() => { setSelectedFileIndex(idx); setViewMode('original'); setActiveAnomaly(null); }} className={`px-4 py-2.5 text-sm font-bold rounded-t-lg transition-colors border-t border-l border-r ${selectedFileIndex === idx ? 'bg-white text-blue-600 border-gray-300' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-700'}`}>{typeof f === 'string' ? f : f.name}</button>))}</div>}
 
-              <div className="bg-slate-900/50 backdrop-blur-2xl border-b border-white/10 p-3 flex justify-center z-10 shadow-sm">
-                  <div className="bg-slate-950/50 border border-white/5 shadow-inner p-1 rounded-full inline-flex">
-                      <button onClick={() => setViewMode('original')} className={`flex items-center space-x-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-slate-800 text-slate-100 shadow-md' : 'text-slate-400 hover:text-slate-200'}`}><Eye className="w-4 h-4" /> <span>Original</span></button>
-                      <button onClick={() => setViewMode('heatmap')} className={`flex items-center space-x-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'heatmap' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}><Activity className="w-4 h-4" /> <span>Heatmap Overlay</span></button>
+              <div className="bg-white border-b border-gray-200 p-3 flex justify-center z-10 shadow-sm">
+                  <div className="bg-gray-100 border border-gray-300 shadow-sm p-1 rounded-full inline-flex">
+                      <button onClick={() => setViewMode('original')} className={`flex items-center space-x-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Eye className="w-4 h-4" /> <span>Original</span></button>
+                      <button onClick={() => setViewMode('heatmap')} className={`flex items-center space-x-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'heatmap' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Activity className="w-4 h-4" /> <span>Heatmap Overlay</span></button>
                   </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 bg-slate-950">
-                  <div className="max-w-4xl mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.5)] bg-slate-900 border border-white/10 rounded-lg relative overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-100">
+                  <div className="max-w-4xl mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.15)] bg-white border border-gray-300 rounded-lg relative overflow-hidden">
                       {viewMode === 'original' ? (
                           isPdfPreview ? (
                               <iframe src={activeFile.original} className="w-full border-none" title="PDF Preview" style={{ height: '80vh' }} />
@@ -1688,9 +1746,9 @@ export default function App() {
                           )
                       ) : (
                           activeFile.heatmap ? (
-                              <img src={activeFile.heatmap} alt="ELA Heatmap Overlay" className="w-full h-auto block bg-slate-950" />
+                              <img src={activeFile.heatmap} alt="ELA Heatmap Overlay" className="w-full h-auto block bg-white" />
                           ) : (
-                              <div className="flex items-center justify-center p-20 text-slate-400 font-bold text-center bg-slate-950 border border-white/5 rounded-lg">
+                              <div className="flex items-center justify-center p-20 text-gray-500 font-bold text-center bg-gray-50 border border-gray-200 rounded-lg">
                                   Heatmap Analysis Unavailable.<br/>Document is likely purely digital (Resume) or could not be processed.
                               </div>
                           )
@@ -1705,7 +1763,7 @@ export default function App() {
                                    height: `${activeFile.flagged_claims[activeAnomaly].box_height}%`,
                                    mixBlendMode: 'normal'
                                }}>
-                               <div className="absolute -top-7 -left-0.5 bg-yellow-500 text-slate-900 text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase whitespace-nowrap">
+                               <div className="absolute -top-7 -left-0.5 bg-yellow-500 text-gray-900 text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase whitespace-nowrap">
                                    {activeFile.flagged_claims[activeAnomaly].page_num ? `Evidence on Pg ${activeFile.flagged_claims[activeAnomaly].page_num}` : 'Target Locked'}
                                </div>
                           </div>
@@ -1724,47 +1782,34 @@ export default function App() {
     if (!activeAuditCase) return null;
     const c = activeAuditCase;
 
-    // Extract document types from the case type string
-    const docTypes = c.type ? c.type.split(' + ').map(t => t.trim()) : [];
+    // Local state for search and sort
+    const [fileSearch, setFileSearch] = useState('');
+    const [fileSortBy, setFileSortBy] = useState('risk_high');
+
     const allFiles = Array.isArray(c.data?.files) ? c.data.files : [];
 
-    // Categorize files by document type
-    const categorizedFiles = {
-      'Resume': allFiles.filter(f => f.name.toLowerCase().includes('resume') || f.name.toLowerCase().includes('cv')),
-      'Payslip': allFiles.filter(f => f.name.toLowerCase().includes('payslip') || f.name.toLowerCase().includes('pay slip')),
-      'Medical Certificate (MC)': allFiles.filter(f => f.name.toLowerCase().includes('mc') || f.name.toLowerCase().includes('medical') || f.name.toLowerCase().includes('certificate')),
-      'Expense Receipt': allFiles.filter(f => f.name.toLowerCase().includes('receipt') || f.name.toLowerCase().includes('expense')),
-      'Other': allFiles.filter(f =>
-        !f.name.toLowerCase().includes('resume') &&
-        !f.name.toLowerCase().includes('cv') &&
-        !f.name.toLowerCase().includes('payslip') &&
-        !f.name.toLowerCase().includes('pay slip') &&
-        !f.name.toLowerCase().includes('mc') &&
-        !f.name.toLowerCase().includes('medical') &&
-        !f.name.toLowerCase().includes('receipt') &&
-        !f.name.toLowerCase().includes('expense')
-      )
-    };
+    // Apply search filter
+    let displayFiles = [...allFiles];
+    if (fileSearch) {
+      displayFiles = displayFiles.filter(f =>
+        f.name.toLowerCase().includes(fileSearch.toLowerCase())
+      );
+    }
 
-    // Get files to display based on active tab
-    let displayFiles = activeDocTab === 'all' ? allFiles : categorizedFiles[activeDocTab] || [];
-
-    // Available tabs based on case type
-    const docTypeTabs = docTypes.map(t => {
-      if (t.includes('Resume')) return 'Resume';
-      if (t.includes('Payslip')) return 'Payslip';
-      if (t.includes('MC') || t.includes('Medical')) return 'Medical Certificate (MC)';
-      if (t.includes('Expense') || t.includes('Receipt')) return 'Expense Receipt';
-      return 'Other';
-    });
-    const availableTabs = ['all', ...docTypeTabs];
-
-    // Remove duplicates
-    const uniqueTabs = [...new Set(availableTabs)];
+    // Apply sorting
+    if (fileSortBy === 'risk_high') {
+      displayFiles.sort((a, b) => a.score - b.score);
+    } else if (fileSortBy === 'risk_low') {
+      displayFiles.sort((a, b) => b.score - a.score);
+    } else if (fileSortBy === 'name_asc') {
+      displayFiles.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (fileSortBy === 'name_desc') {
+      displayFiles.sort((a, b) => b.name.localeCompare(a.name));
+    }
 
     return (
       <div className="p-8 lg:p-12 pb-32 max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
             <button onClick={() => setActiveAuditCase(null)} className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-colors">
               <ArrowRight className="w-5 h-5 rotate-180" />
@@ -1794,25 +1839,28 @@ export default function App() {
           </div>
         </div>
 
-        {/* Document Type Tabs */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-2 mb-6 flex flex-wrap gap-2">
-          {uniqueTabs.map((tab) => {
-            const displayName = tab === 'all' ? 'All Documents' : tab;
-            const count = tab === 'all' ? allFiles.length : (categorizedFiles[tab] || []).length;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveDocTab(tab)}
-                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeDocTab === tab
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                {displayName} {count > 0 && `(${count})`}
-              </button>
-            );
-          })}
+        {/* Search and Sort Bar for Files */}
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-3 shadow-sm">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search file name..."
+              value={fileSearch}
+              onChange={(e) => setFileSearch(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <select
+            value={fileSortBy}
+            onChange={(e) => setFileSortBy(e.target.value)}
+            className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="risk_high">Sort: Highest Risk</option>
+            <option value="risk_low">Sort: Lowest Risk</option>
+            <option value="name_asc">Sort: Name (A-Z)</option>
+            <option value="name_desc">Sort: Name (Z-A)</option>
+          </select>
         </div>
 
         {/* Files List */}
@@ -1821,7 +1869,7 @@ export default function App() {
             <FileWarning className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-gray-600">No documents found</h3>
             <p className="text-gray-500 text-sm mt-2">
-              {activeDocTab === 'all' ? 'No files have been uploaded for this case yet.' : `No ${activeDocTab} documents found.`}
+              {fileSearch ? 'No files match your search.' : 'No files have been uploaded for this case yet.'}
             </p>
           </div>
         ) : (
