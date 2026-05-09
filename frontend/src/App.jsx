@@ -81,10 +81,10 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
             </span>
           </div>
           <div className="flex items-center space-x-1">
-            <button onClick={() => onRename(c.id, c.name)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors" title="Rename Case">
+            <button onClick={(e) => { e.stopPropagation(); onRename(c.id, c.name); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors" title="Rename Case">
               <Edit className="w-4 h-4" />
             </button>
-            <button onClick={() => onDelete(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded transition-colors" title="Delete Case">
+            <button onClick={(e) => { e.stopPropagation(); onDelete(c.id); }} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded transition-colors" title="Delete Case">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -100,13 +100,13 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
                   type="text"
                   placeholder="Search file name..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { e.stopPropagation(); setSearch(e.target.value); }}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => { e.stopPropagation(); setSortBy(e.target.value); }}
                 className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               >
                 <option value="risk_high">Sort: Highest Risk</option>
@@ -154,10 +154,10 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
                         </select>
                       )}
 
-                      <button onClick={() => onRenameFile(c.id, origIdx, file.name)} className="text-gray-400 hover:text-blue-600 p-1 transition-colors" title="Rename File">
+                      <button onClick={(e) => { e.stopPropagation(); onRenameFile(c.id, origIdx, file.name); }} className="text-gray-400 hover:text-blue-600 p-1 transition-colors" title="Rename File">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button onClick={() => onDeleteFile(c.id, file.name)} className="text-gray-400 hover:text-red-600 p-1 transition-colors" title="Delete File">
+                      <button onClick={(e) => { e.stopPropagation(); onDeleteFile(c.id, file.name); }} className="text-gray-400 hover:text-red-600 p-1 transition-colors" title="Delete File">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -177,8 +177,8 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
           <div className="flex flex-col space-y-2">
              <label className="text-xs font-bold text-gray-500 uppercase">Upload Portal Link</label>
              <div className="flex items-center space-x-2 bg-gray-50 border border-gray-300 p-2 rounded-lg">
-               <button onClick={() => onOpenPortal(c.id)} className="text-blue-600 font-mono text-xs truncate max-w-[140px] hover:underline" title={c.link}>{c.link}</button>
-               <button onClick={() => onCopyLink(c.link)} className="p-1 hover:bg-gray-200 rounded text-gray-400 transition-colors"><Copy className="w-4 h-4" /></button>
+               <button onClick={(e) => { e.stopPropagation(); onOpenPortal(c.id); }} className="text-blue-600 font-mono text-xs truncate max-w-[140px] hover:underline" title={c.link}>{c.link}</button>
+               <button onClick={(e) => { e.stopPropagation(); onCopyLink(c.link); }} className="p-1 hover:bg-gray-200 rounded text-gray-400 transition-colors"><Copy className="w-4 h-4" /></button>
              </div>
           </div>
         )}
@@ -192,7 +192,7 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
 
         {c.status === 'completed' && (
           <div className="flex flex-col space-y-2 w-full mt-2 md:mt-0">
-            <button onClick={() => onViewReport(c, 0)} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm flex justify-center items-center">
+            <button onClick={(e) => { e.stopPropagation(); onViewReport(c, 0); }} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm flex justify-center items-center">
               View Full Report <ArrowRight className="w-4 h-4 ml-2" />
             </button>
             {c.type?.toLowerCase().includes('resume') && (
@@ -1156,7 +1156,7 @@ export default function App() {
 
 
   const renderAuditCasesView = () => {
-
+    try {
     // Filter cases by selected type and search
     let filteredCases = auditCaseTypeFilter === 'all'
       ? safeContainers
@@ -1314,6 +1314,10 @@ export default function App() {
       </div>
     </div>
   );
+    } catch (error) {
+      console.error("Error rendering audit cases view:", error);
+      return <div className="p-8 text-center text-red-500">Error loading audit cases. Please refresh.</div>;
+    }
   };
 
   const renderNewEntryView = () => (
@@ -1799,6 +1803,14 @@ export default function App() {
     if (!activeAuditCase) return null;
     const c = activeAuditCase;
 
+    if (!c || typeof c !== 'object') {
+      return (
+        <div className="p-8 text-center">
+          <p className="text-gray-500">Invalid case data. Please go back and try again.</p>
+          <button onClick={() => setActiveAuditCase(null)} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">Go Back</button>
+        </div>
+      );
+    }
 
     const allFiles = Array.isArray(c.data?.files) ? c.data.files : [];
 
