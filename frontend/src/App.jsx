@@ -1,3 +1,24 @@
+/**
+ * ForensikGaji Frontend - Main Application Component
+ *
+ * This is the single-page application (SPA) that powers the ForensikGaji
+ * forensic document auditing platform. It manages:
+ *
+ * - Dashboard: Audit case management and risk monitoring
+ * - Expert Marketplace: Booking technical experts for interviews
+ * - Candidate Portal: Secure document upload interface
+ * - Report View: Detailed forensic analysis with heatmaps and overlays
+ *
+ * State Management:
+ * - React hooks (useState, useEffect) for local state
+ * - LocalStorage for data persistence
+ * - BroadcastChannel for cross-tab synchronization
+ *
+ * @author ForensikGaji Team
+ * @created May 2026
+ * @hackathon Project 2030 - MyAI Future (Track 5: Secure Digital)
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Shield, Users, Search,
@@ -9,6 +30,23 @@ import {
 
 import { initialContainers, expertDatabase } from './constants';
 
+/**
+ * AuditCaseItem Component
+ *
+ * Displays a single audit case with its files, search/filter functionality,
+ * and action buttons. Shows different states based on analysis status.
+ *
+ * @param {Object} c - The case object containing id, name, status, data
+ * @param {Function} onRename - Callback to rename the case
+ * @param {Function} onDelete - Callback to delete the case
+ * @param {Function} onViewReport - Callback to view the forensic report
+ * @param {Function} onCopyLink - Callback to copy the upload link
+ * @param {Function} onOpenPortal - Callback to open candidate portal
+ * @param {Function} onUpdateFileStatus - Callback to update file investigation status
+ * @param {Function} onDeleteFile - Callback to delete a file from case
+ * @param {Function} onRenameFile - Callback to rename a file
+ * @param {Function} onBookExpertFromDashboard - Callback to book expert from dashboard
+ */
 const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpenPortal, onUpdateFileStatus, onDeleteFile, onRenameFile, onBookExpertFromDashboard }) => {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('risk_high');
@@ -168,6 +206,17 @@ const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpen
   );
 };
 
+/**
+ * Main Application Component
+ *
+ * Manages the entire ForensikGaji SPA including:
+ * - Tab navigation (Landing, Dashboard, Marketplace, Registration, Candidate Portal)
+ * - Audit case management (CRUD operations)
+ * - File upload and analysis workflow
+ * - Expert booking functionality
+ * - Cross-tab state synchronization
+ * - Local storage persistence
+ */
 export default function App() {
   const isExternalLink = new URLSearchParams(window.location.search).get('upload') !== null;
   const [activeTab, setActiveTab] = useState(isExternalLink ? 'candidate_portal' : 'landing'); 
@@ -367,6 +416,14 @@ export default function App() {
     ? (completedAudits.reduce((acc, curr) => acc + (curr.data.score || 0), 0) / completedAudits.length).toFixed(1)
     : 0;
 
+  // ==========================================================================
+  // EVENT HANDLERS
+  // ==========================================================================
+
+  /**
+   * Creates a new audit case with a unique ID and upload link.
+   * Supports both link generation (for candidates) and direct upload modes.
+   */
   const handleCreateContainer = (e) => {
     e.preventDefault();
     if (!newContainerName.trim() || newContainerTypes.length === 0) return;
@@ -400,6 +457,10 @@ export default function App() {
     setOtherDocType('');
   };
 
+  /**
+   * Handles direct HR upload flow - creates case and processes files immediately.
+   * Files are sent to the backend API for forensic analysis.
+   */
   const handleDirectHRUpload = async (e) => {
     e.preventDefault();
     if (!newContainerName.trim() || directFiles.length === 0) return;
@@ -501,6 +562,10 @@ export default function App() {
     }
   };
 
+  /**
+   * Handles candidate document uploads from the candidate portal.
+   * Processes files through the backend API and updates the case status.
+   */
   const handleCandidateUpload = async (event) => {
     const files = Array.from(event.target.files);
     event.target.value = null; 
@@ -782,6 +847,14 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 2000);
   };
 
+  // ==========================================================================
+  // RENDER FUNCTIONS
+  // ==========================================================================
+
+  /**
+   * Renders the navigation sidebar with menu items.
+   * Shows different active states based on current tab.
+   */
   const renderSidebar = () => (
     <div className="w-72 bg-slate-950/80 backdrop-blur-xl text-white flex flex-col h-full flex-shrink-0 border-r border-white/5 shadow-[5px_0_30px_rgba(0,0,0,0.5)] z-20">
       <div className="p-6 flex items-center space-x-3 border-b border-white/5">
@@ -1963,6 +2036,9 @@ export default function App() {
 
   if (isExternalLink) return (<div className="flex h-screen font-sans bg-gray-100 text-gray-800 overflow-hidden relative">{renderCandidatePortalView()}{toastMessage && (<div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300"><div className="bg-white/90 backdrop-blur-sm text-gray-800 px-6 py-4 rounded-xl shadow-lg flex items-center border border-gray-200"><CheckCircle className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" /><p className="font-medium pr-6">{toastMessage}</p><button onClick={() => setToastMessage(null)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-5 h-5" /></button></div></div>)}</div>);
 
+  // ==========================================================================
+  // MAIN RENDER - Conditional rendering based on active tab
+  // ==========================================================================
   return (
     <div className="flex h-screen font-sans bg-slate-950 text-slate-100 overflow-hidden relative">
       <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[50%] bg-cyan-500/10 rounded-full blur-[200px] pointer-events-none"></div>

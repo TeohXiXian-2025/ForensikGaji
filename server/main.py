@@ -1,94 +1,231 @@
+"""
+ForensikGaji Backend - Main FastAPI Application
+
+This is the entry point for the ForensikGaji backend API server. It handles
+HTTP requests from the frontend and coordinates the multi-layer forensic
+document analysis pipeline.
+
+Architecture Overview:
+    1. Receives document upload via POST /api/scan-document
+    2. Uploads to Google Cloud Storage for buffering
+    3. Extracts text using Google Cloud Document AI (OCR)
+    4. Runs Layer 1: Metadata & Pixel Analysis (fraud_engine.py)
+    5. Runs Layer 2: Semantic Analysis (fraud_engine.py)
+    6. Runs Layer 3: AI Reasoning via Gemini (gemini_agent.py)
+    7. Locates exact coordinates of flagged claims (fraud_engine.py)
+    8. Generates ELA heatmap visualization (ela_vision.py)
+    9. Returns comprehensive forensic report to frontend
+
+Author: ForensikGaji Team
+Created: May 2026
+Hackathon: Project 2030 - MyAI Future (Track 5: Secure Digital)
+"""
+
 import os
 import traceback
 import base64
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import models and services
+# Import Pydantic models for request/response validation
 from models import ScanResponse, ExpertBookingRequest, BookingResponse
+
+# Import forensic analysis service modules
 from services.storage import upload_to_gcs
 from services.doc_ai import analyze_document
 from services.ela_vision import generate_ela_heatmap
 from services.gemini_agent import generate_verdict_and_questions
 from services.workspace import create_expert_interview_meet
-from services.fraud_engine import analyze_metadata_layer, analyze_semantic_layer, locate_claims_in_pdf
 
-# Load environment variables
+# Import fraud detection engine functions
+from services.fraud_engine import (
+    analyze_metadata_layer,
+    analyze_semantic_layer,
+    locate_claims_in_pdf
+)
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+# Load environment variables from .env file into the process environment
+# This includes API keys, GCP project IDs, and bucket names
 load_dotenv()
 
-app = FastAPI(title="ForensikGaji Backend API")
+# Initialize the FastAPI application with metadata
+app = FastAPI(
+    title="ForensikGaji Backend API",
+    description="AI-powered forensic document auditing platform",
+    version="2.0.0"
+)
 
-# Allow frontend to communicate with backend
+# =============================================================================
+# CORS MIDDLEWARE CONFIGURATION
+# =============================================================================
+
+# Configure Cross-Origin Resource Sharing (CORS) to allow the frontend
+# to communicate with this backend. In production, replace "*" with
+# specific allowed origins for security.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],  # TODO: Restrict to specific domains in production
+    allow_methods=["*"],  # Allowed HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allowed HTTP headers
 )
+
+
+# =============================================================================
+# API ENDPOINTS
+# =============================================================================
 
 @app.post("/api/scan-document")
 async def scan_document_endpoint(file: UploadFile = File(...)):
-    """The main ingestion engine for the candidate portal."""
+    """
+    Main document forensic analysis endpoint.
+
+    This endpoint orchestrates the complete 5-layer forensic analysis pipeline:
+    1. Document ingestion and Cloud Storage upload
+    2. OCR text extraction via Document AI
+    3. Metadata and pixel-level fraud detection
+    4. Semantic analysis for keyword stuffing
+    5. AI reasoning via Gemini for final verdict
+    6. Claim localization for visual overlays
+    7. ELA heatmap generation for tampering visualization
+
+    Args:
+        file: Uploaded document file (PDF, JPG, PNG)
+
+    Returns:
+        JSON response containing:
+            - fraud_probability_score: Trust score (0-100, 100=authentic)
+            - status_color: Risk indicator (Green/Yellow/Red)
+            - fraud_verdict: AI-generated explanation
+            - flagged_claims: List of suspicious items with coordinates
+            - original_document_base64: Base64-encoded original
+            - ela_heatmap_base64: Base64-encoded heatmap
+
+    Raises:
+        HTTPException: If any step in the pipeline fails
+    """
     try:
-        # 1. Read file to memory and detect type
+        # =========================================================================
+        # STEP 1: Read and classify the uploaded file
+        # =========================================================================
+        # Read the entire file into memory for processing
         file_bytes = await file.read()
+
+        # Detect MIME type from the upload metadata, default to PDF if not specified
         mime_type = file.content_type if file.content_type else "application/pdf"
 
-        # 2. Upload to Cloud Storage
+        # =========================================================================
+        # STEP 2: Upload to Google Cloud Storage for buffering
+        # =========================================================================
+        # This provides a persistent location for Document AI to access the file
         gcs_uri = upload_to_gcs(file_bytes, file.filename)
 
-        # 3. Run Document AI to extract text
+        # =========================================================================
+        # STEP 3: Extract text using Google Cloud Document AI (OCR)
+        # =========================================================================
+        # Document AI performs OCR and returns structured text with spatial data
         extracted_text = analyze_document(gcs_uri, mime_type)
 
+        # =========================================================================
+        # STEP 4: Run Layer 1 & 2 - Metadata and Semantic Fraud Detection
+        # =========================================================================
         print("Running Fraud Engine Layers 1 & 2...")
-        # 4. RUN METADATA & SEMANTIC FRAUD LAYERS
+
+        # Layer 1: Analyze PDF metadata, EXIF data, and detect manipulation tools
         metadata_results = analyze_metadata_layer(file_bytes, mime_type)
+
+        # Layer 2: Analyze text for keyword stuffing and semantic anomalies
         semantic_results = analyze_semantic_layer(extracted_text)
 
+        # =========================================================================
+        # STEP 5: Run Layer 3 - AI Reasoning with Gemini 2.5 Flash
+        # =========================================================================
         print("Running Gemini Layer 3 Risk Scoring...")
-        # 5. RUN THE BRAIN
+
+        # Synthesize all previous layers and generate the final forensic verdict
         ai_analysis = generate_verdict_and_questions(
-            extracted_text, 
-            metadata_results, 
+            extracted_text,
+            metadata_results,
             semantic_results
         )
 
+        # =========================================================================
+        # STEP 6: Locate exact coordinates of flagged claims in the PDF
+        # =========================================================================
         print("Locating Claims on Document...")
-        # 6. Find the exact X/Y coordinates of the flagged claims!
+
+        # This enables the frontend to draw yellow boxes around suspicious text
         ai_analysis = locate_claims_in_pdf(file_bytes, ai_analysis, mime_type)
 
+        # =========================================================================
+        # STEP 7: Generate ELA Heatmap for tampering visualization
+        # =========================================================================
         print("Generating ELA Heatmap...")
+
         try:
-            # Catch BOTH perfectly stitched multi-page images
+            # Generate both original and heatmap images as base64 data URIs
+            # The heatmap highlights areas with JPEG compression inconsistencies
             original_b64, heatmap_b64 = generate_ela_heatmap(file_bytes, mime_type)
         except Exception as heatmap_err:
+            # If heatmap generation fails, continue without it
             print(f"⚠️ Heatmap skipped: {heatmap_err}")
+
+            # Fallback: Encode the original document for display
             raw_b64 = base64.b64encode(file_bytes).decode("utf-8")
             original_b64 = f"data:{mime_type};base64,{raw_b64}"
             heatmap_b64 = None
 
-        # 7. Inject BOTH images into the final JSON payload
+        # =========================================================================
+        # STEP 8: Assemble and return the complete forensic report
+        # =========================================================================
+        # Inject the base64-encoded images into the response
         ai_analysis["original_document_base64"] = original_b64
         ai_analysis["ela_heatmap_base64"] = heatmap_b64
-        
+
         print("✅ Analysis Complete! Sending to frontend.")
         return ai_analysis
 
     except Exception as e:
+        # =========================================================================
+        # ERROR HANDLING: Log detailed error information for debugging
+        # =========================================================================
         print("🚨 CRITICAL BACKEND CRASH 🚨")
-        traceback.print_exc()  
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/book-expert", response_model=BookingResponse)
 async def book_expert_endpoint(request: ExpertBookingRequest):
-    """The Expert Marketplace integration."""
+    """
+    Expert marketplace booking endpoint.
+
+    This endpoint creates a new expert interview booking and generates
+    a Google Meet link for the session. Currently simulates Google
+    Workspace Calendar API integration (full OAuth2 required for production).
+
+    Args:
+        request: Booking request with candidate email, expert email, and date
+
+    Returns:
+        BookingResponse containing the generated Meet link and confirmation message
+
+    Raises:
+        HTTPException: If booking creation fails
+    """
     try:
+        # Generate the Google Meet link (simulated for hackathon)
         meet_link = create_expert_interview_meet(
             request.candidate_email,
             request.expert_email,
             request.interview_date,
         )
+
+        # Return the booking confirmation
         return BookingResponse(
             meet_link=meet_link,
             status_message="Expert Interview successfully booked and calendar invites sent.",
@@ -96,6 +233,20 @@ async def book_expert_endpoint(request: ExpertBookingRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# =============================================================================
+# APPLICATION ENTRY POINT
+# =============================================================================
+
 if __name__ == "__main__":
+    """
+    Development server entry point.
+
+    This block only runs when the script is executed directly (not when imported).
+    It starts the Uvicorn ASGI server for local development.
+
+    Note: In production, use 'gunicorn' or 'uvicorn' directly with proper
+    worker configuration for better performance.
+    """
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

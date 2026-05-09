@@ -1,6 +1,24 @@
+/**
+ * ForensikGaji Frontend - Global Styles
+ *
+ * This file contains:
+ * - Tailwind CSS imports
+ * - Custom scrollbar styling
+ * - Smooth scrolling behavior
+ * - Custom selection colors
+ * - Glassmorphism utility classes
+ * - Animation keyframes
+ *
+ * @author ForensikGaji Team
+ * @created May 2026
+ */
+
+/* Import Tailwind CSS v4 */
 @import "tailwindcss";
 
-/* Custom scrollbar for webkit browsers */
+/* ==========================================================================
+   CUSTOM SCROLLBAR (WebKit browsers: Chrome, Safari, Edge)
+   ========================================================================== */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -20,35 +38,47 @@
   background: rgba(107, 114, 128, 0.7);
 }
 
-/* Smooth scrolling */
+/* ==========================================================================
+   SMOOTH SCROLLING
+   ========================================================================== */
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom selection color */
+/* ==========================================================================
+   CUSTOM TEXT SELECTION COLOR
+   ========================================================================== */
 ::selection {
-  background: rgba(99, 102, 241, 0.3);
-  color: rgb(30, 41, 59);
+  background: rgba(99, 102, 241, 0.3);  /* Indigo with transparency */
+  color: rgb(30, 41, 59);  /* Slate-800 */
 }
 
-/* Glassmorphism utility */
+/* ==========================================================================
+   GLASSMORPHISM UTILITIES
+   These classes create the signature "glass" look for the UI
+   ========================================================================== */
 @layer utilities {
+  /* Standard glass effect - 70% opacity white with blur */
   .glass {
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);  /* Safari support */
     border: 1px solid rgba(229, 231, 235, 0.8);
   }
 
+  /* Stronger glass effect - 90% opacity white with more blur */
   .glass-strong {
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);  /* Safari support */
     border: 1px solid rgba(229, 231, 235, 1);
   }
 }
 
-/* Subtle fade-in animation */
+/* ==========================================================================
+   FADE IN UP ANIMATION
+   Used for entrance animations on page load
+   ========================================================================== */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -64,7 +94,10 @@ html {
   animation: fadeInUp 0.6s ease-out forwards;
 }
 
-/* Shimmer effect for cards */
+/* ==========================================================================
+   SHIMMER LOADING EFFECT
+   Creates a subtle shimmer animation for loading states
+   ========================================================================== */
 @keyframes shimmer {
   0% {
     background-position: -1000px 0;
