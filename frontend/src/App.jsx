@@ -1829,7 +1829,7 @@ export default function App() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{c.name}</h1>
               <p className="text-gray-500 text-sm mt-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">{c.id}</span>
+                <span className="text-xs font-bold text-gray-500 uppercase">{c.id}</span>
                 {' · '}
                 {c.type}
               </p>
@@ -2548,12 +2548,17 @@ export default function App() {
   // MAIN RENDER - Conditional rendering based on active tab
   // ==========================================================================
   return (
-    <div className="flex h-screen font-sans bg-slate-950 text-slate-100 overflow-hidden relative">
-      <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[50%] bg-cyan-500/10 rounded-full blur-[200px] pointer-events-none"></div>
-      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[50%] bg-blue-500/10 rounded-full blur-[200px] pointer-events-none"></div>
+    <div className="flex h-screen font-sans bg-gray-100 text-gray-800 overflow-hidden relative">
+      {activeTab === 'landing' ? (
+        <>
+          <div className="fixed inset-0 bg-slate-950 -z-10"></div>
+          <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[50%] bg-cyan-500/10 rounded-full blur-[200px] pointer-events-none"></div>
+          <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[50%] bg-blue-500/10 rounded-full blur-[200px] pointer-events-none"></div>
+        </>
+      ) : null}
 
       {activeTab === 'landing' ? renderLandingPage() : (
-        <div className="z-10 flex h-screen w-full relative bg-gray-100">
+        <div className="z-10 flex h-screen w-full relative">
           {renderSidebar()}
           <main className="flex-1 h-screen overflow-y-auto relative bg-gray-50 backdrop-blur-sm z-10 border-l border-gray-200">
             {activeTab === 'scanner' && !activeAuditCase && renderForensicScannerView()}
