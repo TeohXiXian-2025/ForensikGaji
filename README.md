@@ -6,20 +6,20 @@
 
 **🚨 LIVE APPLICATION:** [Launch the ForensikGaji Forensic Portal](https://forensikgaji-frontend-381516681695.asia-southeast1.run.app)  
 
-ForensikGaji is an AI-powered forensic document auditing platform engineered for **Project 2030: MyAI Future Hackathon**. Designed to tackle **Track 5: Secure Digital**, this platform protects the integrity of the Malaysian digital economy by verifying professional and financial documents (payslips, medical certificates, receipts) against pixel-level manipulation and semantic fraud.
+ForensikGaji is an AI-powered forensic document auditing platform engineered for **Project 2030: MyAI Future Hackathon**. Designed to tackle **Track 5: Secure Digital**, this platform protects the integrity of the Malaysian digital economy by verifying professional and financial documents (payslips, medical certificates, receipts, resumes) against pixel-level manipulation and semantic fraud.
 
 ---
 
 ## ✨ Feature List
 
-Our platform transitions document verification from manual guesswork to autonomous Agentic AI execution:
+Our platform transitions document verification from manual guesswork to autonomous Agentic AI execution, wrapped in a premium **Minimalist Glass** user interface:
 
 *   **Multi-Layer Forensic Vision:** Utilizes Error Level Analysis (ELA) and Digital Sharpness Detection via OpenCV to generate heatmaps that highlight spliced text and "Canva-injected" digital insertions.
 *   **Agentic Reasoning Layer:** Powered by **Gemini 2.5 Flash**, the engine doesn't just scan—it reasons. It identifies "Outstanding Claims" versus "Areas for Clarification," providing a narrative forensic verdict.
 *   **Behavioral Interview Synthesis:** For every flagged anomaly, the AI generates specific, hard-hitting behavioral interview questions to help recruiters verify claims during live sessions.
 *   **Executive Risk Dashboard:** Real-time analytics showing risk distribution (Authentic vs. Critical) across the entire talent pipeline.
 *   **Hybrid Ingestion:** Support for both secure "Audit Links" (sent to candidates) and "Direct HR Uploads" for immediate internal batch processing.
-*   **Expert Marketplace:** A vetted ecosystem of technical leads and auditors available for on-demand deep-dive interviews, integrated with Google Workspace.
+*   **Integrated Expert Marketplace:** A vetted ecosystem of technical leads and auditors. HR professionals can instantly book experts directly from a high-risk audit case, share specific forensic evidence, and receive comprehensive feedback reports post-interview.
 
 ---
 
@@ -28,7 +28,7 @@ Our platform transitions document verification from manual guesswork to autonomo
 ForensikGaji is built on a highly scalable, serverless microservice architecture deployed entirely within the **Google Cloud Ecosystem**.
 
 ### The Cloud Stack
-1. **Frontend (Client):** A responsive, state-driven React.js single-page application built with Vite.
+1. **Frontend (Client):** A responsive, state-driven React.js single-page application built with Vite and Tailwind CSS.
 2. **Backend (API Gateway):** A high-performance Python FastAPI server, fully containerized via Docker.
 3. **Deployment:** Both frontend and backend are deployed as independent, auto-scaling services on **Google Cloud Run**.
 
@@ -49,6 +49,7 @@ The project is organized to separate business logic from UI components and stati
 ├── frontend/                # React + Vite Application
 │   ├── src/
 │   │   ├── App.jsx          # Main application logic & routing
+│   │   ├── index.css        # Tailwind configurations and glassmorphism tokens
 │   │   └── constants.js     # Decoupled mock data & configurations
 ├── server/                  # FastAPI Backend
 │   ├── main.py              # API entry point

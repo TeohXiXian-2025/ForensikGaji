@@ -1,17 +1,176 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Shield, Users, Search, 
-  FileText, AlertTriangle, CheckCircle, FileWarning, 
-  ChevronRight, X, Star, Clock, FileDown, Activity, 
+import {
+  Shield, Users, Search,
+  FileText, AlertTriangle, CheckCircle, FileWarning,
+  ChevronRight, X, Star, Clock, FileDown, Activity,
   Link as LinkIcon, Copy, PlusCircle, UserCheck, Eye,
-  UserPlus, Edit, Trash2, MessageSquare, Download, BarChart2, UploadCloud, Link
+  UserPlus, Edit, Trash2, MessageSquare, Download, BarChart2, UploadCloud, Link, ArrowRight, Menu, Play, LogOut
 } from 'lucide-react';
 
 import { initialContainers, expertDatabase } from './constants';
 
+const AuditCaseItem = ({ c, onRename, onDelete, onViewReport, onCopyLink, onOpenPortal, onUpdateFileStatus, onDeleteFile, onRenameFile, onBookExpertFromDashboard }) => {
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('risk_high');
+
+  let displayFiles = Array.isArray(c.data?.files) ? [...c.data.files] : [];
+
+  if (search) {
+    displayFiles = displayFiles.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
+  }
+
+  if (sortBy === 'risk_high') {
+    displayFiles.sort((a, b) => a.score - b.score);
+  } else if (sortBy === 'risk_low') {
+    displayFiles.sort((a, b) => b.score - a.score);
+  } else if (sortBy === 'name') {
+    displayFiles.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return (
+    <div className="bg-slate-900/50 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 flex flex-col md:flex-row justify-between gap-6 transition-all hover:bg-slate-900/80 hover:shadow-[0_8px_30px_rgba(37,99,235,0.15)] hover:border-white/20">
+      <div className="flex-1 min-w-0 w-full md:pr-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-bold text-slate-500 uppercase">{c.id}</span>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+              c.status === 'waiting' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+              c.status === 'processing' ? 'bg-blue-500/20 text-blue-400 animate-pulse border-blue-500/30' :
+              'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+            }`}>
+              {c.status === 'waiting' ? 'Waiting for Candidate' : c.status === 'processing' ? 'Analyzing Files...' : 'Analysis Complete'}
+            </span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <button onClick={() => onRename(c.id, c.name)} className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-white/10 rounded transition-colors" title="Rename Case">
+              <Edit className="w-4 h-4" />
+            </button>
+            <button onClick={() => onDelete(c.id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-white/10 rounded transition-colors" title="Delete Case">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <h3 className="text-lg font-semibold text-slate-100">{c.name}</h3>
+
+        {c.status === 'completed' && Array.isArray(c.data?.files) && c.data.files.length > 0 ? (
+          <div className="mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search file name..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-slate-950/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="risk_high">Sort: Highest Risk</option>
+                <option value="risk_low">Sort: Lowest Risk</option>
+                <option value="name">Sort: A-Z</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+              {displayFiles.map((file, idx) => {
+                const isHighRisk = file.score < 40;
+                const origIdx = c.data.files.findIndex(f => f.name === file.name);
+
+                return (
+                  <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-950/80 border border-slate-800 px-4 py-3 rounded-lg gap-3 hover:border-white/20 transition-colors">
+                    <div className="flex items-center min-w-0 overflow-hidden flex-1">
+                      <FileText className="w-4 h-4 text-slate-500 mr-3 flex-shrink-0" />
+                      <span className="text-sm font-medium text-slate-200 truncate block cursor-pointer hover:text-blue-400" onClick={() => onViewReport(c, origIdx)}>{file.name}</span>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <div className={`px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap ${
+                        file.score >= 80 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                        file.score < 40 ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                        'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      }`}>
+                        Score: {file.score}%
+                      </div>
+
+                      {isHighRisk && (
+                        <select
+                          value={file.investigation_status || 'Unreviewed'}
+                          onChange={(e) => onUpdateFileStatus(c.id, file.name, e.target.value)}
+                          className={`text-xs rounded-md px-2 py-1 outline-none border font-medium ${
+                            file.investigation_status === 'Investigated - Fraud' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                            file.investigation_status === 'Investigated - Not Scam' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                            file.investigation_status === 'Investigation Ongoing' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                            'bg-slate-800 text-slate-400 border-slate-700'
+                          }`}
+                        >
+                          <option value="Unreviewed">Unreviewed</option>
+                          <option value="Investigation Ongoing">Investigation Ongoing</option>
+                          <option value="Investigated - Not Scam">Investigated - Not Scam</option>
+                          <option value="Investigated - Fraud">Investigated - Fraud</option>
+                        </select>
+                      )}
+
+                      <button onClick={() => onRenameFile(c.id, origIdx, file.name)} className="text-slate-400 hover:text-blue-400 p-1 transition-colors" title="Rename File">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => onDeleteFile(c.id, file.name)} className="text-slate-400 hover:text-red-400 p-1 transition-colors" title="Delete File">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {displayFiles.length === 0 && <p className="text-slate-500 text-sm italic">No files match your search.</p>}
+            </div>
+          </div>
+        ) : (
+          <p className="text-slate-500 text-sm mt-2">{c.type}</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3 justify-center border-t md:border-t-0 md:border-l border-white/5 pt-4 md:pt-0 md:pl-6 min-w-[200px]">
+        {(c.status === 'waiting' || c.status === 'completed') && (
+          <div className="flex flex-col space-y-2">
+             <label className="text-xs font-bold text-slate-500 uppercase">Upload Portal Link</label>
+             <div className="flex items-center space-x-2 bg-slate-950/50 border border-white/10 p-2 rounded-lg">
+               <button onClick={() => onOpenPortal(c.id)} className="text-blue-400 font-mono text-xs truncate max-w-[140px] hover:underline" title={c.link}>{c.link}</button>
+               <button onClick={() => onCopyLink(c.link)} className="p-1 hover:bg-white/10 rounded text-slate-400 transition-colors"><Copy className="w-4 h-4" /></button>
+             </div>
+          </div>
+        )}
+
+        {c.status === 'processing' && (
+          <div className="flex flex-col items-center justify-center p-4 bg-slate-950/50 rounded-lg border border-white/10">
+            <Activity className="w-6 h-6 text-blue-400 animate-spin mb-2" />
+            <span className="text-xs font-medium text-slate-400">Processing...</span>
+          </div>
+        )}
+
+        {c.status === 'completed' && (
+          <div className="flex flex-col space-y-2 w-full mt-2 md:mt-0">
+            <button onClick={() => onViewReport(c, 0)} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm flex justify-center items-center">
+              View Full Report <ArrowRight className="w-4 h-4 ml-2" />
+            </button>
+            {c.type?.toLowerCase().includes('resume') && (
+               <button onClick={() => onBookExpertFromDashboard(c)} className="w-full bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm flex justify-center items-center">
+                  Book Expert <Users className="w-4 h-4 ml-2" />
+               </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const isExternalLink = new URLSearchParams(window.location.search).get('upload') !== null;
-  const [activeTab, setActiveTab] = useState(isExternalLink ? 'candidate_portal' : 'scanner'); 
+  const [activeTab, setActiveTab] = useState(isExternalLink ? 'candidate_portal' : 'landing'); 
   
   const [containers, setContainers] = useState(() => {
     try {
@@ -106,14 +265,28 @@ export default function App() {
   const [isClosed, setIsClosed] = useState(false); 
   
   const [sessionUploadedFiles, setSessionUploadedFiles] = useState([]);
+  const [candidateCustomName, setCandidateCustomName] = useState('');
   
   const [bookingExpert, setBookingExpert] = useState(null);
   const [selectedExpertDetail, setSelectedExpertDetail] = useState(null); 
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  
+  const [marketplaceTab, setMarketplaceTab] = useState('discover');
+  const [myBookings, setMyBookings] = useState([]);
+  const [shareCaseModal, setShareCaseModal] = useState(null);
+  const [viewFeedbackModal, setViewFeedbackModal] = useState(null);
+  const [selectedShareCase, setSelectedShareCase] = useState('');
+  const [selectedShareFiles, setSelectedShareFiles] = useState([]);
+  const [shareMessage, setShareMessage] = useState('');
+  
+  const [searchExpertName, setSearchExpertName] = useState('');
+  const [filterRole, setFilterRole] = useState('All');
+  const [filterPriceRange, setFilterPriceRange] = useState('All');
 
   const [containerToDelete, setContainerToDelete] = useState(null);
   const [containerToRename, setContainerToRename] = useState(null);
+  const [fileToRename, setFileToRename] = useState(null);
   const [renameValue, setRenameValue] = useState('');
 
   const [viewMode, setViewMode] = useState('original'); 
@@ -168,20 +341,31 @@ export default function App() {
 
   const safeContainers = Array.isArray(containers) ? containers : [];
   const totalAudits = safeContainers.length;
+  
+  let totalFilesScanned = 0;
+  let totalCriticalRiskFiles = 0;
+  const allHighRiskFiles = [];
+
+  safeContainers.forEach(c => {
+    if (c.status === 'completed' && Array.isArray(c.data?.files)) {
+      totalFilesScanned += c.data.files.length;
+      c.data.files.forEach((file, index) => {
+        if (file.score < 40) {
+          if (file.investigation_status !== 'Investigated - Not Scam') {
+            totalCriticalRiskFiles++;
+          }
+          if (file.investigation_status !== 'Investigated - Not Scam' && file.investigation_status !== 'Investigated - Fraud') {
+            allHighRiskFiles.push({ container: c, file, fileIndex: index });
+          }
+        }
+      });
+    }
+  });
+
   const completedAudits = safeContainers.filter(c => c && c.status === 'completed' && c.data);
-  const highRiskCount = completedAudits.filter(c => c.data.score < 40).length;
   const avgScore = completedAudits.length > 0
     ? (completedAudits.reduce((acc, curr) => acc + (curr.data.score || 0), 0) / completedAudits.length).toFixed(1)
     : 0;
-
-  const cleanCount = completedAudits.filter(c => c.data.score >= 80).length;
-  const reviewCount = completedAudits.filter(c => c.data.score >= 40 && c.data.score < 80).length;
-  
-  const cleanWidth = completedAudits.length ? (cleanCount / completedAudits.length) * 100 : 0;
-  const reviewWidth = completedAudits.length ? (reviewCount / completedAudits.length) * 100 : 0;
-  
-  const safeCleanWidth = cleanWidth || 0;
-  const safeReviewWidth = reviewWidth || 0;
 
   const handleCreateContainer = (e) => {
     e.preventDefault();
@@ -196,7 +380,7 @@ export default function App() {
       name: newContainerName,
       type: finalTypes.join(' + '), 
       status: 'waiting',
-      link: `${window.location.origin}/?upload=${newId}`,
+      link: `https://forensikgaji-frontend-381516681695.asia-southeast1.run.app/?upload=${newId}`,
       data: null
     };
     
@@ -228,7 +412,7 @@ export default function App() {
       name: newContainerName,
       type: finalTypes.length > 0 ? finalTypes.join(' + ') : 'Direct Upload',
       status: 'processing',
-      link: `${window.location.origin}/?upload=${newId}`,
+      link: `https://forensikgaji-frontend-381516681695.asia-southeast1.run.app/?upload=${newId}`,
       data: null
     };
     
@@ -329,7 +513,17 @@ export default function App() {
       const uploadedFilesData = [];
       let anyFraud = false;
 
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        let finalName = file.name;
+        if (candidateCustomName.trim() !== '') {
+          const extParts = file.name.split('.');
+          const ext = extParts.length > 1 ? '.' + extParts.pop() : '';
+          finalName = files.length === 1 
+            ? `${candidateCustomName.trim()}${ext}` 
+            : `${candidateCustomName.trim()}-${i + 1}${ext}`;
+        }
+
         const formData = new FormData();
         formData.append("file", file);
         
@@ -341,7 +535,7 @@ export default function App() {
         const result = await response.json();
 
         uploadedFilesData.push({
-          name: file.name,
+          name: finalName,
           score: result.fraud_probability_score,
           issue: result.fraud_verdict,
           flagged_claims: result.flagged_claims,
@@ -428,13 +622,56 @@ export default function App() {
     setContainerToRename(null);
   };
 
+  const confirmFileRename = (e) => {
+    e.preventDefault();
+    if (!fileToRename || !renameValue || renameValue.trim() === "") return;
+    
+    setContainers(prev => {
+       const safePrev = Array.isArray(prev) ? prev : [];
+       return safePrev.map(c => {
+         if (c.id === fileToRename.containerId) {
+            const files = Array.isArray(c.data?.files) ? [...c.data.files] : [];
+            if (files[fileToRename.origIdx]) {
+               files[fileToRename.origIdx] = {
+                 ...files[fileToRename.origIdx],
+                 name: renameValue.trim()
+               };
+            }
+            return {
+               ...c,
+               data: {
+                  ...c.data,
+                  files
+               }
+            };
+         }
+         return c;
+       });
+    });
+    setFileToRename(null);
+  };
+
   const handleBookExpert = async (e) => {
     e.preventDefault();
     setBookingSuccess(true);
+    
+    setMyBookings(prev => [{
+      id: `booking-${Date.now()}`,
+      expert: bookingExpert,
+      status: 'Not Shared', 
+      dateBooked: new Date().toLocaleDateString(),
+      sharedCaseId: null,
+      sharedFiles: [],
+      message: '',
+      feedback: null
+    }, ...prev]);
+
     setTimeout(() => {
       setBookingSuccess(false);
       setBookingExpert(null);
       setSelectedExpertDetail(null); 
+      setActiveTab('marketplace');
+      setMarketplaceTab('bookings');
     }, 3000);
   };
 
@@ -546,125 +783,171 @@ export default function App() {
   };
 
   const renderSidebar = () => (
-    <div className="w-72 bg-slate-900 text-white flex flex-col h-full flex-shrink-0 shadow-xl z-10">
-      <div className="p-6 flex items-center space-x-3 border-b border-slate-800 bg-slate-950">
-        <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg">
+    <div className="w-72 bg-slate-950/80 backdrop-blur-xl text-white flex flex-col h-full flex-shrink-0 border-r border-white/5 shadow-[5px_0_30px_rgba(0,0,0,0.5)] z-20">
+      <div className="p-6 flex items-center space-x-3 border-b border-white/5">
+        <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-2.5 rounded-xl shadow-lg shadow-cyan-500/20">
           <Shield className="w-6 h-6 text-white" />
         </div>
-        <span className="text-2xl font-bold tracking-tight">Forensik<span className="text-blue-500">Gaji</span></span>
+        <span className="text-xl font-bold tracking-tight text-white">Forensik<span className="text-cyan-400">Gaji</span></span>
       </div>
-      <nav className="flex-1 px-4 space-y-2 mt-8">
-        <button onClick={() => setActiveTab('scanner')} className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl font-medium transition-all ${activeTab === 'scanner' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-          <Search className="w-5 h-5" /> <span>Forensic Scanner</span>
+      <nav className="flex-1 px-3 space-y-2 mt-6">
+        <button onClick={() => setActiveTab('scanner')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'scanner' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+          <Activity className="w-5 h-5" /> <span>Dashboard</span>
         </button>
-        <button onClick={() => setActiveTab('marketplace')} className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl font-medium transition-all ${activeTab === 'marketplace' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+        <button onClick={() => setActiveTab('marketplace')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'marketplace' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
           <Users className="w-5 h-5" /> <span>Expert Marketplace</span>
         </button>
-        <button onClick={() => setActiveTab('register')} className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl font-medium transition-all ${activeTab === 'register' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+        <button onClick={() => setActiveTab('register')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'register' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
           <UserPlus className="w-5 h-5" /> <span>Register as Expert</span>
         </button>
       </nav>
+      <div className="p-4 mt-auto border-t border-white/5 space-y-3">
+        <button onClick={() => setActiveTab('new_entry')} className={`w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all ${activeTab === 'new_entry' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' : 'bg-white/5 text-emerald-400 border border-white/10 hover:bg-white/10 hover:shadow-lg'}`}>
+          <PlusCircle className="w-5 h-5" /> <span>New Entry</span>
+        </button>
+        <button onClick={() => setActiveTab('landing')} className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all bg-transparent text-slate-400 border border-transparent hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400">
+          <LogOut className="w-5 h-5" /> <span>Log Out</span>
+        </button>
+      </div>
     </div>
   );
 
   const renderForensicScannerView = () => (
-    <div className="p-8 lg:p-12 pb-32 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold text-slate-900 mb-2">Forensic Document Scanner</h1>
-      <p className="text-slate-500 mb-10 text-lg">Deploy secure Audit Links to your talent pool. Powered by our Sovereign Forensic Layer.</p>
+    <div className="p-8 lg:p-12 pb-32 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
+         <div>
+            <h1 className="text-3xl font-black text-slate-100 tracking-tight drop-shadow-md">Forensic Scanner Dashboard</h1>
+            <p className="text-blue-400 mt-2 text-lg font-bold drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]">Sovereign Forensic Layer v2.0</p>
+         </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-blue-500">
-          <h3 className="text-sm text-slate-500 font-bold uppercase tracking-wider">Total Audits</h3>
-          <p className="text-3xl font-black mt-2 text-slate-900">{totalAudits}</p>
+      {/* Global Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="p-6 bg-slate-900/50 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-white/20 hover:shadow-[0_8px_40px_rgba(37,99,235,0.15)] transition-all">
+          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:text-blue-400 group-hover:opacity-10 transition-all"><Shield className="w-24 h-24 text-slate-400" /></div>
+          <h3 className="text-sm text-slate-400 font-bold uppercase tracking-wider">Total Active Audits</h3>
+          <p className="text-4xl font-black mt-3 text-slate-100">{totalAudits}</p>
         </div>
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-red-500">
-          <h3 className="text-sm text-slate-500 font-bold uppercase tracking-wider">High Risk (Critical)</h3>
-          <p className="text-3xl font-black mt-2 text-red-600">{highRiskCount}</p>
+        <div className="p-6 bg-slate-900/50 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-white/20 hover:shadow-[0_8px_40px_rgba(37,99,235,0.15)] transition-all">
+          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-all"><FileText className="w-24 h-24 text-blue-400" /></div>
+          <h3 className="text-sm text-slate-400 font-bold uppercase tracking-wider">Total Files Scanned</h3>
+          <p className="text-4xl font-black mt-3 text-blue-400">{totalFilesScanned}</p>
         </div>
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-green-500">
-          <h3 className="text-sm text-slate-500 font-bold uppercase tracking-wider">Avg Trust Score</h3>
-          <p className="text-3xl font-black mt-2 text-slate-900">{avgScore}%</p>
+        <div className="p-6 bg-slate-900/50 backdrop-blur-2xl rounded-2xl border border-red-500/20 shadow-[0_4px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-red-500/40 hover:shadow-[0_8px_40px_rgba(239,68,68,0.15)] transition-all">
+          <div className="absolute top-0 right-0 p-4 opacity-5 text-red-500 group-hover:opacity-10 transition-all"><AlertTriangle className="w-24 h-24" /></div>
+          <h3 className="text-sm text-red-400/80 font-bold uppercase tracking-wider">Total Critical Risk Files</h3>
+          <p className="text-4xl font-black mt-3 text-red-500">{totalCriticalRiskFiles}</p>
         </div>
       </div>
 
-      <div className="flex justify-end mb-8">
-        <button 
-          onClick={() => setShowCharts(!showCharts)}
-          className="flex items-center text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 px-4 py-2 rounded-full"
-        >
-          <BarChart2 className="w-4 h-4 mr-1.5" /> 
-          {showCharts ? 'Hide Advanced Analytics' : 'Show Advanced Analytics'}
-        </button>
-      </div>
-
-      {showCharts && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-10 animate-in fade-in slide-in-from-top-4 duration-300">
-          <h3 className="text-xl font-bold text-slate-800 mb-8 border-b pb-4">Executive Risk Distribution</h3>
-          
-          <div className="flex flex-col md:flex-row items-center justify-between gap-10">
-            <div className="relative w-56 h-56 rounded-full flex items-center justify-center shadow-inner" 
-                 style={{ background: `conic-gradient(#22c55e ${safeCleanWidth}%, #facc15 ${safeCleanWidth}% ${safeCleanWidth + safeReviewWidth}%, #ef4444 ${safeCleanWidth + safeReviewWidth}% 100%)` }}>
-              <div className="w-40 h-40 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10">
-                <span className="text-4xl font-black text-slate-800">{completedAudits.length}</span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Total Scans</span>
+      {/* High Risk Action Center */}
+      {allHighRiskFiles.length > 0 && (
+         <div className="mb-12">
+            <h2 className="text-xl font-bold text-red-400 mb-4 flex items-center drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]">
+              <AlertTriangle className="w-5 h-5 mr-2" /> High Priority Action Center
+            </h2>
+            <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
+              <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                 {allHighRiskFiles.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between bg-slate-950/80 border border-slate-800 p-4 rounded-xl hover:border-red-500/50 hover:shadow-lg transition-all cursor-pointer" onClick={() => { setSelectedContainer(item.container); setViewMode('original'); setSelectedFileIndex(item.fileIndex); setActiveAnomaly(null); }}>
+                       <div className="flex items-center space-x-4">
+                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                          <div>
+                             <p className="font-bold text-slate-200">{item.file.name}</p>
+                             <p className="text-xs text-slate-400 mt-1">Audit: {item.container.name}</p>
+                          </div>
+                       </div>
+                       <div className="flex items-center space-x-4">
+                          <span className={`text-xs px-2.5 py-1 rounded-md font-bold ${item.file.investigation_status && item.file.investigation_status !== 'Unreviewed' ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                             {item.file.investigation_status || 'Unreviewed'}
+                          </span>
+                          <span className="text-sm font-black text-red-500">{item.file.score}% Score</span>
+                          <ChevronRight className="w-5 h-5 text-slate-500" />
+                       </div>
+                    </div>
+                 ))}
               </div>
             </div>
-
-            <div className="flex-1 w-full space-y-4">
-               <div className="flex justify-between items-center p-5 bg-slate-50 rounded-xl border border-slate-100 transition-all hover:bg-white hover:shadow-md">
-                 <div className="flex items-center">
-                   <div className="w-3.5 h-3.5 bg-green-500 rounded-full mr-4 shadow-[0_0_10px_#22c55e]"></div>
-                   <div>
-                     <span className="font-bold text-slate-700 block text-base">Authentic / Clear</span>
-                     <span className="text-xs text-slate-400 font-medium">Trust Score 80-100%</span>
-                   </div>
-                 </div>
-                 <span className="font-black text-xl text-slate-900">{cleanCount} <span className="text-sm font-medium text-slate-400 ml-1">({Math.round(safeCleanWidth)}%)</span></span>
-               </div>
-
-               <div className="flex justify-between items-center p-5 bg-slate-50 rounded-xl border border-slate-100 transition-all hover:bg-white hover:shadow-md">
-                 <div className="flex items-center">
-                   <div className="w-3.5 h-3.5 bg-yellow-400 rounded-full mr-4 shadow-[0_0_10px_#facc15]"></div>
-                   <div>
-                     <span className="font-bold text-slate-700 block text-base">Manual Review Required</span>
-                     <span className="text-xs text-slate-400 font-medium">Trust Score 40-79%</span>
-                   </div>
-                 </div>
-                 <span className="font-black text-xl text-slate-900">{reviewCount} <span className="text-sm font-medium text-slate-400 ml-1">({Math.round(safeReviewWidth)}%)</span></span>
-               </div>
-
-               <div className="flex justify-between items-center p-5 bg-slate-50 rounded-xl border border-slate-100 transition-all hover:bg-white hover:shadow-md">
-                 <div className="flex items-center">
-                   <div className="w-3.5 h-3.5 bg-red-500 rounded-full mr-4 shadow-[0_0_10px_#ef4444]"></div>
-                   <div>
-                     <span className="font-bold text-slate-700 block text-base">Critical Risk (Fraud Detected)</span>
-                     <span className="text-xs text-slate-400 font-medium">Trust Score &lt;40%</span>
-                   </div>
-                 </div>
-                 <span className="font-black text-xl text-slate-900">{highRiskCount} <span className="text-sm font-medium text-slate-400 ml-1">({100 - Math.round(safeCleanWidth) - Math.round(safeReviewWidth)}%)</span></span>
-               </div>
-            </div>
-          </div>
-        </div>
+         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-10">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center">
-            <PlusCircle className="w-5 h-5 mr-2 text-blue-600" />
-            Create Audit Case
-          </h2>
-          
-          <div className="flex bg-slate-100 rounded-lg p-1.5 self-start">
-            <button 
-              onClick={() => { setCreationMode('link'); setNewContainerName(''); }} 
-              className={`px-4 py-2 rounded-md text-sm font-bold flex items-center transition-all ${creationMode === 'link' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+      {/* Active Audit Ledger */}
+      <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
+         <h2 className="text-lg font-semibold text-slate-100 flex items-center">
+            <Users className="w-5 h-5 mr-2 text-cyan-400" /> Active Audit Cases
+         </h2>
+         <button onClick={() => setActiveTab('new_entry')} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors flex items-center">
+            <PlusCircle className="w-4 h-4 mr-2" /> New Case
+         </button>
+      </div>
+
+      <div className="space-y-6">
+        {safeContainers.length === 0 ? (
+           <div className="text-center py-12 bg-slate-900/30 rounded-2xl border border-white/5 border-dashed">
+              <FileWarning className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-slate-400">No active audits found</h3>
+              <p className="text-slate-500 text-sm mt-2">Create a new entry to get started.</p>
+           </div>
+        ) : (
+           safeContainers.map((c) => (
+             <AuditCaseItem
+                key={c.id}
+                c={c}
+                onRename={openRenameModal}
+                onDelete={setContainerToDelete}
+                onViewReport={(container, fileIdx) => { setSelectedContainer(container); setViewMode('original'); setSelectedFileIndex(fileIdx); setActiveAnomaly(null); }}
+                onCopyLink={copyToClipboard}
+                onOpenPortal={(id) => { setActiveCandidateUploadId(id); setActiveTab('candidate_portal'); }}
+                onUpdateFileStatus={(containerId, fileName, status) => {
+                   setContainers(prev => prev.map(con => {
+                      if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
+                         return { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === fileName ? { ...f, investigation_status: status } : f) } };
+                      }
+                      return con;
+                   }));
+                }}
+                onDeleteFile={(containerId, fileName) => {
+                   setContainers(prev => prev.map(con => {
+                      if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
+                         const newFiles = con.data.files.filter(f => f.name !== fileName);
+                         const newScore = newFiles.length > 0 ? Math.round(newFiles.reduce((acc, f) => acc + f.score, 0) / newFiles.length) : 0;
+                         return { ...con, data: { ...con.data, files: newFiles, score: newScore } };
+                      }
+                      return con;
+                   }));
+                }}
+                onRenameFile={(containerId, origIdx, currentName) => {
+                   setFileToRename({ containerId, origIdx });
+                   setRenameValue(currentName);
+                }}
+                onBookExpertFromDashboard={(caseData) => {
+                   setActiveTab('marketplace');
+                   setMarketplaceTab('discover');
+                }}
+             />
+           ))
+        )}
+      </div>
+    </div>
+  );
+
+  const renderNewEntryView = () => (
+    <div className="p-8 lg:p-12 pb-32 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-black text-slate-100 mb-2">Create Audit Case</h1>
+      <p className="text-slate-400 mb-10 text-lg">Initialize a new secure forensic container for document analysis.</p>
+
+      <div className="bg-slate-900/50 backdrop-blur-2xl rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.3)] border border-white/10 p-8">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8 border-b border-white/10 pb-6">
+          <div className="flex bg-slate-950/50 backdrop-blur-md rounded-lg p-1.5 self-start shadow-inner border border-white/5">
+            <button
+              onClick={() => { setCreationMode('link'); setNewContainerName(''); }}
+              className={`px-6 py-2.5 rounded-md text-sm font-bold flex items-center transition-all ${creationMode === 'link' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
             >
-              <Link className="w-4 h-4 mr-2" /> Candidate Link
+              <LinkIcon className="w-4 h-4 mr-2" /> Candidate Link
             </button>
-            <button 
-              onClick={() => { setCreationMode('direct'); setNewContainerName(''); setDirectFiles([]); }} 
-              className={`px-4 py-2 rounded-md text-sm font-bold flex items-center transition-all ${creationMode === 'direct' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+            <button
+              onClick={() => { setCreationMode('direct'); setNewContainerName(''); setDirectFiles([]); }}
+              className={`px-6 py-2.5 rounded-md text-sm font-bold flex items-center transition-all ${creationMode === 'direct' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
             >
               <UploadCloud className="w-4 h-4 mr-2" /> Direct Upload
             </button>
@@ -672,40 +955,40 @@ export default function App() {
         </div>
 
         {creationMode === 'direct' ? (
-          <form onSubmit={handleDirectHRUpload} className="space-y-6 animate-in fade-in duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={(e) => { handleDirectHRUpload(e); setActiveTab('scanner'); }} className="space-y-6 animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Audit Case Name</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g., Q1 Engineering Intake - Ali" 
-                  value={newContainerName} 
-                  onChange={(e) => setNewContainerName(e.target.value)} 
-                  className="w-full border rounded-xl p-3.5 outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" 
-                  required 
+                <label className="block text-sm font-bold text-slate-300 mb-2">Audit Case Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Q1 Engineering Intake - Ali"
+                  value={newContainerName}
+                  onChange={(e) => setNewContainerName(e.target.value)}
+                  className="w-full border border-white/10 rounded-lg p-4 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-950/50 shadow-inner text-slate-100 placeholder-slate-500 transition-all"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Document Type</label>
-                <div className="w-full bg-slate-50 border rounded-xl p-3 h-32 overflow-y-auto">
+                <label className="block text-sm font-bold text-slate-300 mb-2">Document Type</label>
+                <div className="w-full bg-slate-950/50 shadow-inner border border-white/10 rounded-lg p-4 h-32 overflow-y-auto custom-scrollbar">
                   {['Resume', 'Payslip', 'Medical Certificate (MC)', 'Expense Receipt', 'Other'].map(type => (
                     <div key={type}>
-                      <label className="flex items-center space-x-2 text-sm mb-2 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={newContainerTypes.includes(type)} 
-                          onChange={(e) => e.target.checked ? setNewContainerTypes([...newContainerTypes, type]) : setNewContainerTypes(newContainerTypes.filter(t => t !== type))} 
-                          className="w-4 h-4 text-blue-600 rounded" 
+                      <label className="flex items-center space-x-3 text-sm mb-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newContainerTypes.includes(type)}
+                          onChange={(e) => e.target.checked ? setNewContainerTypes([...newContainerTypes, type]) : setNewContainerTypes(newContainerTypes.filter(t => t !== type))}
+                          className="w-4 h-4 text-blue-500 bg-slate-900 rounded border-white/10 focus:ring-blue-500"
                         />
-                        <span className="text-slate-700 font-medium">{type}</span>
+                        <span className="text-slate-300 font-medium">{type}</span>
                       </label>
                       {type === 'Other' && newContainerTypes.includes('Other') && (
-                        <input 
-                          type="text" 
-                          placeholder="Specify custom document type..." 
-                          value={otherDocType} 
-                          onChange={(e) => setOtherDocType(e.target.value)} 
-                          className="ml-6 mb-2 mt-1 p-1 text-sm border border-slate-300 rounded outline-none focus:ring-1 focus:ring-blue-500 w-[85%]" 
+                        <input
+                          type="text"
+                          placeholder="Specify custom document type..."
+                          value={otherDocType}
+                          onChange={(e) => setOtherDocType(e.target.value)}
+                          className="ml-7 mb-3 p-2 text-sm border border-white/10 bg-slate-900 text-slate-100 rounded outline-none focus:ring-1 focus:ring-blue-500 w-[85%]"
                           autoFocus
                         />
                       )}
@@ -714,14 +997,14 @@ export default function App() {
                 </div>
               </div>
             </div>
-            
-            <div className="flex flex-col space-y-4">
-              <div onClick={() => document.getElementById('directFileInput').click()} className="border-2 border-dashed border-blue-300 bg-blue-50/40 hover:bg-blue-50/80 rounded-xl p-10 text-center cursor-pointer transition-colors group">
-                 <input 
-                   id="directFileInput" 
-                   type="file" 
-                   multiple 
-                   className="hidden" 
+
+            <div className="flex flex-col">
+              <div onClick={() => document.getElementById('directFileInput').click()} className="border-2 border-dashed border-white/20 hover:border-blue-500 rounded-xl p-12 text-center cursor-pointer bg-slate-950/50 hover:bg-slate-900 transition-colors group">
+                 <input
+                   id="directFileInput"
+                   type="file"
+                   multiple
+                   className="hidden"
                    onChange={(e) => {
                      const newFiles = Array.from(e.target.files);
                      setDirectFiles(prev => {
@@ -729,24 +1012,24 @@ export default function App() {
                        const uniqueNew = newFiles.filter(f => !existingNames.includes(f.name));
                        return [...prev, ...uniqueNew];
                      });
-                     e.target.value = null; 
-                   }} 
-                   onClick={(e) => e.stopPropagation()} 
+                     e.target.value = null;
+                   }}
+                   onClick={(e) => e.stopPropagation()}
                  />
-                 
-                 <UploadCloud className="w-12 h-12 text-blue-500 mx-auto mb-4 group-hover:scale-110 transition-transform" />
-                 <h3 className="text-lg font-bold text-slate-800 mb-1">Click or Drag & Drop multiple files</h3>
-                 <p className="text-slate-500 text-sm">Select all documents belonging to this case. They will be processed together immediately.</p>
+
+                 <UploadCloud className="w-16 h-16 text-cyan-400 mx-auto mb-4 group-hover:scale-110 transition-transform" />
+                 <h3 className="text-xl font-bold text-slate-200 mb-2">Click or Drag & Drop multiple files</h3>
+                 <p className="text-slate-400 text-sm">Select all documents belonging to this case. They will be processed together immediately.</p>
               </div>
 
               {directFiles.length > 0 && (
-                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm w-full text-left">
-                   <p className="font-bold text-sm text-slate-700 mb-2 border-b pb-2">Selected Files ({directFiles.length}):</p>
-                   <div className="max-h-32 overflow-y-auto">
+                 <div className="bg-slate-950/50 border border-white/10 p-5 rounded-lg w-full text-left mt-6 shadow-inner">
+                   <p className="font-bold text-sm text-slate-300 mb-3 border-b border-white/10 pb-2">Selected Files ({directFiles.length}):</p>
+                   <div className="max-h-40 overflow-y-auto custom-scrollbar">
                      {directFiles.map((f, i) => (
-                       <div key={i} className="flex items-center text-xs text-slate-600 mt-1.5">
-                         <CheckCircle className="w-3.5 h-3.5 text-green-500 mr-2 flex-shrink-0" /> 
-                         <span className="truncate font-medium">{f.name}</span>
+                       <div key={i} className="flex items-center text-sm text-slate-400 mt-2">
+                         <CheckCircle className="w-4 h-4 text-emerald-400 mr-3 flex-shrink-0" />
+                         <span className="truncate font-medium text-slate-300">{f.name}</span>
                        </div>
                      ))}
                    </div>
@@ -754,187 +1037,224 @@ export default function App() {
               )}
             </div>
 
-            <button type="submit" disabled={directFiles.length === 0 || !newContainerName.trim()} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white px-6 py-4 rounded-xl font-bold shadow-md transition-colors text-lg">
+            <button type="submit" disabled={directFiles.length === 0 || !newContainerName.trim()} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white px-6 py-4 rounded-lg font-bold shadow-lg transition-colors text-lg mt-4">
               Upload & Analyze {directFiles.length > 0 ? `${directFiles.length} Files` : ''}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleCreateContainer} className="flex flex-col md:flex-row gap-4 animate-in fade-in duration-300">
-            <input type="text" placeholder="e.g., Audit Case - Ahmad" value={newContainerName} onChange={(e) => setNewContainerName(e.target.value)} className="flex-1 border rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500" required />
-            <div className="w-full md:w-64 bg-slate-50 border rounded-xl p-3 h-32 overflow-y-auto">
-              {['Resume', 'Payslip', 'Medical Certificate (MC)', 'Expense Receipt', 'Other'].map(type => (
-                <div key={type}>
-                  <label className="flex items-center space-x-2 text-sm mb-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={newContainerTypes.includes(type)} 
-                      onChange={(e) => e.target.checked ? setNewContainerTypes([...newContainerTypes, type]) : setNewContainerTypes(newContainerTypes.filter(t => t !== type))} 
-                      className="w-4 h-4 text-blue-600 rounded" 
-                    />
-                    <span className="text-slate-700 font-medium">{type}</span>
-                  </label>
-                  {type === 'Other' && newContainerTypes.includes('Other') && (
-                    <input 
-                      type="text" 
-                      placeholder="Specify..." 
-                      value={otherDocType} 
-                      onChange={(e) => setOtherDocType(e.target.value)} 
-                      className="ml-6 mb-2 mt-1 p-1 text-xs border border-slate-300 rounded outline-none focus:ring-1 focus:ring-blue-500 w-[85%]" 
-                      autoFocus
-                    />
-                  )}
-                </div>
-              ))}
+          <div className="flex flex-col items-center justify-center py-8 animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)] rounded-full flex items-center justify-center mb-6">
+              <LinkIcon className="w-10 h-10 text-cyan-400" />
             </div>
-            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm h-fit transition-colors">Generate Link</button>
+            <h3 className="text-lg font-semibold text-slate-100 mb-2">Generate Candidate Link</h3>
+            <p className="text-slate-400 text-center max-w-md mb-8">Create a secure upload portal for a candidate. They will only see an upload screen and cannot access the dashboard.</p>
+
+            <div className="bg-slate-950/50 p-6 rounded-lg border border-white/10 w-full shadow-inner">
+            <form onSubmit={(e) => { handleCreateContainer(e); setActiveTab('scanner'); }} className="flex flex-col gap-6 animate-in fade-in duration-300">
+            <div>
+              <label className="block text-sm font-bold text-slate-300 mb-2">Audit Case Name</label>
+              <input type="text" placeholder="e.g., Audit Case - Ahmad" value={newContainerName} onChange={(e) => setNewContainerName(e.target.value)} className="w-full bg-slate-900 border border-white/10 text-slate-100 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 outline-none mb-6 font-medium placeholder-slate-500 shadow-inner" required />
+
+              <label className="block text-sm font-bold text-slate-300 mb-2">Requested Documents</label>
+              <div className="w-full bg-slate-950/50 shadow-inner border border-white/10 rounded-lg p-4 h-40 overflow-y-auto custom-scrollbar mb-6">
+                {['Resume', 'Payslip', 'Medical Certificate (MC)', 'Expense Receipt', 'Other'].map(type => (
+                  <div key={type}>
+                    <label className="flex items-center space-x-3 text-sm mb-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newContainerTypes.includes(type)}
+                        onChange={(e) => e.target.checked ? setNewContainerTypes([...newContainerTypes, type]) : setNewContainerTypes(newContainerTypes.filter(t => t !== type))}
+                        className="w-4 h-4 text-blue-500 bg-slate-900 rounded border-white/10 focus:ring-blue-500"
+                      />
+                      <span className="text-slate-300 font-medium">{type}</span>
+                    </label>
+                    {type === 'Other' && newContainerTypes.includes('Other') && (
+                      <input
+                        type="text"
+                        placeholder="Specify..."
+                        value={otherDocType}
+                        onChange={(e) => setOtherDocType(e.target.value)}
+                        className="ml-7 mb-3 p-2 text-sm border border-white/10 bg-slate-900 text-slate-100 rounded outline-none focus:ring-1 focus:ring-blue-500 w-[85%]"
+                        autoFocus
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-4 rounded-lg font-bold shadow-lg transition-colors text-lg mt-2">Generate Candidate Link</button>
           </form>
+          </div>
+          </div>
         )}
       </div>
-
-      <h2 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2">Active Audit Ledger</h2>
-      <div className="space-y-4">
-        {safeContainers.map((c) => (
-          <div key={c.id} className="bg-white rounded-xl shadow-sm border p-6 flex flex-col md:flex-row justify-between gap-6 transition-all hover:shadow-md">
-            <div className="flex-1 min-w-0 w-full md:pr-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase">{c.id}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                    c.status === 'waiting' ? 'bg-amber-100 text-amber-700' : 
-                    c.status === 'processing' ? 'bg-blue-100 text-blue-700 animate-pulse' :
-                    'bg-slate-100 text-slate-600'
-                  }`}>
-                    {c.status === 'waiting' ? 'Waiting for Candidate' : c.status === 'processing' ? 'Analyzing Files...' : 'Analysis Complete'}
-                  </span>
-                  {c.data?.clash_detected && (
-                     <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white uppercase animate-pulse shadow-sm">Clash Detected</span>
-                  )}
-                </div>
-                <div className="flex items-center space-x-1">
-                  <button onClick={() => openRenameModal(c.id, c.name)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Rename Case">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setContainerToDelete(c.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete Case">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">{c.name}</h3>
-              {c.status === 'completed' && Array.isArray(c.data?.files) && c.data.files.length > 0 ? (
-                <div className="mt-4 flex flex-col gap-2 max-w-xl">
-                  {c.data.files.map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-lg">
-                      <div className="flex items-center min-w-0 overflow-hidden pr-4">
-                        <FileText className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
-                        <span className="text-sm font-medium text-slate-700 truncate block">{file.name}</span>
-                      </div>
-                      <div className={`px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap ${
-                        file.score >= 95 ? 'bg-green-100 text-green-700' :
-                        file.score < 40 ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {file.score}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-slate-500 text-sm mt-1">{c.type}</p>
-              )}
-            </div>
-            {(c.status === 'waiting' || c.status === 'completed') && (
-              <div className="flex items-center h-fit self-center space-x-2 bg-slate-50 border p-2 rounded-lg mt-2 md:mt-0 flex-shrink-0">
-                <button onClick={() => { setActiveCandidateUploadId(c.id); setActiveTab('candidate_portal'); }} className="text-blue-600 font-mono text-sm underline truncate max-w-[200px]" title={c.link}>{c.link}</button>
-                <button onClick={() => copyToClipboard(c.link)} className="p-1 hover:bg-slate-200 rounded text-slate-400"><Copy className="w-4 h-4" /></button>
-              </div>
-            )}
-            {c.status === 'processing' && (
-              <div className="flex items-center h-fit self-center px-4 flex-shrink-0">
-                <Activity className="w-6 h-6 text-blue-500 animate-spin" />
-              </div>
-            )}
-            {c.status === 'completed' && (
-              <div className="flex items-center h-fit self-center md:mt-8 flex-shrink-0">
-                <button onClick={() => { setSelectedContainer(c); setViewMode('original'); setSelectedFileIndex(0); setActiveAnomaly(null); }} className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold transition-colors shadow-sm whitespace-nowrap">View Report</button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
     </div>
   );
 
-  const renderMarketplaceView = () => (
-    <div className="p-8 lg:p-12 pb-32 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold text-slate-900 mb-2">Expert Interview Marketplace</h1>
-      <p className="text-slate-500 mb-10 text-lg">Hire verified industry professionals to conduct technical interviews for your candidates.</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {expertDatabase.map(expert => (
-          <div key={expert.id} onClick={() => setSelectedExpertDetail(expert)} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer">
-            <div className="flex items-center space-x-4 mb-4">
-              <img src={expert.image} alt={expert.name} className="w-16 h-16 rounded-full object-cover border border-slate-200" />
-              <div>
-                <h3 className="font-bold text-slate-900 leading-tight">{expert.name}</h3>
-                <p className="text-[#4f46e5] font-medium text-sm mt-0.5">{expert.role}</p>
-                <p className="text-slate-500 text-sm">{expert.company}</p>
-              </div>
+  const renderMarketplaceView = () => {
+    const filteredExperts = expertDatabase.filter(expert => {
+      const matchesSearch = expert.name.toLowerCase().includes(searchExpertName.toLowerCase());
+      const matchesRole = filterRole === 'All' || expert.role === filterRole;
+      const matchesPrice = filterPriceRange === 'All' ||
+        (filterPriceRange === '< RM 150' && expert.rate < 150) ||
+        (filterPriceRange === 'RM 150 - RM 200' && expert.rate >= 150 && expert.rate <= 200) ||
+        (filterPriceRange === '> RM 200' && expert.rate > 200);
+      return matchesSearch && matchesRole && matchesPrice;
+    });
+
+    return (
+    <div className="p-8 lg:p-12 pb-32 max-w-6xl mx-auto">
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100 mb-1">Expert Interview Marketplace</h1>
+          <p className="text-slate-400">Hire verified industry professionals for technical interviews.</p>
+        </div>
+        <div className="bg-slate-900/50 p-1 rounded-lg border border-white/10 flex space-x-1">
+           <button onClick={() => setMarketplaceTab('discover')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${marketplaceTab === 'discover' ? 'bg-slate-800 text-slate-100 shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Find Experts</button>
+           <button onClick={() => setMarketplaceTab('bookings')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${marketplaceTab === 'bookings' ? 'bg-slate-800 text-slate-100 shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>My Bookings</button>
+        </div>
+      </div>
+
+      {marketplaceTab === 'discover' ? (
+        <>
+          <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 rounded-2xl p-5 mb-6 flex flex-col md:flex-row gap-4 shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Search</label>
+              <input type="text" value={searchExpertName} onChange={(e) => setSearchExpertName(e.target.value)} placeholder="Search by name..." className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
             </div>
-            <div className="flex items-center text-sm mb-4">
-              <Star className="w-5 h-5 text-amber-400 fill-amber-400 mr-1.5" />
-              <span className="font-bold text-slate-900 mr-1.5 text-base">{expert.rating}</span>
-              <span className="text-slate-400">({expert.reviews} reviews)</span>
+            <div className="w-full md:w-48">
+              <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Role</label>
+              <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="All">All Roles</option>
+                <option value="Technical Lead">Technical Lead</option>
+                <option value="AI Engineer">AI Engineer</option>
+                <option value="Mobile Developer">Mobile Developer</option>
+                <option value="Frontend Specialist">Frontend Specialist</option>
+                <option value="DevOps Architect">DevOps Architect</option>
+                <option value="Cybersecurity Analyst">Cybersecurity Analyst</option>
+              </select>
             </div>
-            <div className="flex flex-wrap gap-2 mb-6 flex-1">
-              {expert.skills.map(s => <span key={s} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-xs font-medium rounded-md">{s}</span>)}
-            </div>
-            <p className="text-xs text-slate-400 mb-4 text-center italic font-medium">Click card to view full profile</p>
-            <div className="flex items-center justify-between pt-5 border-t border-slate-100 mt-auto">
-              <div className="flex items-center text-slate-700 font-bold text-base"><Clock className="w-4 h-4 mr-1.5 text-slate-400" /> {expert.rate}</div>
-              <button onClick={(e) => { e.stopPropagation(); setBookingExpert(expert); }} className="bg-[#4f46e5] hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors">Book Interview</button>
+            <div className="w-full md:w-48">
+              <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Price</label>
+              <select value={filterPriceRange} onChange={(e) => setFilterPriceRange(e.target.value)} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="All">All Prices</option>
+                <option value="< RM 150">&lt; RM 150/hr</option>
+                <option value="RM 150 - RM 200">RM 150 - RM 200/hr</option>
+                <option value="> RM 200">&gt; RM 200/hr</option>
+              </select>
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="flex flex-col gap-3">
+            {filteredExperts.map(expert => (
+              <div key={expert.id} onClick={() => setSelectedExpertDetail(expert)} className="bg-slate-900/50 backdrop-blur-xl border border-white/10 p-5 hover:bg-slate-900/80 hover:border-white/20 hover:shadow-[0_8px_30px_rgba(37,99,235,0.15)] transition-all cursor-pointer flex flex-col md:flex-row gap-5 items-center rounded-2xl">
+                <img src={expert.image} alt={expert.name} className="w-14 h-14 rounded-full object-cover border-2 border-slate-700" />
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="font-semibold text-slate-100">{expert.name}</h3>
+                  <p className="text-cyan-400 text-sm">{expert.role} · {expert.company}</p>
+                </div>
+
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center text-sm">
+                    <Star className="w-4 h-4 text-amber-400 fill-amber-400 mr-1" />
+                    <span className="font-medium text-slate-200">{expert.rating}</span>
+                    <span className="text-slate-500 ml-1">({expert.reviews})</span>
+                  </div>
+                  <div className="text-sm font-medium text-emerald-400">RM {expert.rate}/hr</div>
+                  <button onClick={(e) => { e.stopPropagation(); setBookingExpert(expert); }} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:shadow-[0_0_25px_rgba(59,130,246,0.7)] whitespace-nowrap">Book</button>
+                </div>
+              </div>
+            ))}
+            {filteredExperts.length === 0 && (
+              <div className="py-16 text-center bg-slate-900/30 border border-white/5 border-dashed rounded-2xl">
+                <p className="text-slate-500">No experts found matching your criteria.</p>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-4">
+           {myBookings.length === 0 ? (
+               <div className="text-center py-12 bg-slate-900/30 rounded-2xl border border-white/5 border-dashed">
+                  <h3 className="text-lg font-bold text-slate-400">No Bookings Yet</h3>
+                  <p className="text-slate-500 text-sm mt-2">Book an expert from the Find Experts tab to see them here.</p>
+               </div>
+           ) : myBookings.map((b) => (
+               <div key={b.id} className="bg-slate-900/50 backdrop-blur-xl border border-white/10 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div className="flex items-center gap-4 w-full md:w-auto">
+                     <img src={b.expert.image} alt={b.expert.name} className="w-12 h-12 rounded-full border-2 border-slate-700 shadow-md" />
+                     <div>
+                        <h3 className="font-bold text-slate-100">{b.expert.name}</h3>
+                        <p className="text-xs text-cyan-400">{b.expert.role} @ {b.expert.company}</p>
+                        <p className="text-xs text-slate-500 mt-1">Booked on {b.dateBooked}</p>
+                     </div>
+                  </div>
+                  <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+                     <div className="text-sm">
+                        <span className="text-slate-500 mr-2">Status:</span>
+                        <span className={`font-bold px-2 py-1 rounded text-xs border ml-1 ${
+                           b.status === 'Not Shared' ? 'bg-slate-800 text-slate-400 border-slate-700' :
+                           b.status === 'Awaiting Feedback' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 animate-pulse' :
+                           'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        }`}>{b.status}</span>
+                     </div>
+                     
+                     {b.status === 'Not Shared' && (
+                        <button onClick={() => { setShareCaseModal(b); setSelectedShareCase(''); setSelectedShareFiles([]); setShareMessage(''); }} className="w-full md:w-auto bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors">
+                           Share Audit Case
+                        </button>
+                     )}
+                     {b.status === 'Feedback Received' && (
+                        <button onClick={() => setViewFeedbackModal(b)} className="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg transition-colors">
+                           View Feedback
+                        </button>
+                     )}
+                  </div>
+               </div>
+           ))}
+        </div>
+      )}
     </div>
   );
+};
 
   const renderExpertRegistrationView = () => (
     <div className="p-8 lg:p-12 pb-32 max-w-4xl mx-auto">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Become an Expert Auditor</h1>
-        <p className="text-slate-500 mt-2 text-lg">Join our vetted marketplace of elite technical interviewers and help secure the hiring ecosystem.</p>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-100 mb-1">Become an Expert Auditor</h1>
+        <p className="text-slate-400">Join our vetted marketplace of elite technical interviewers.</p>
       </div>
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 max-w-2xl">
-        <form onSubmit={(e) => { e.preventDefault(); setRegistrationSuccess(true); setTimeout(() => { setRegistrationSuccess(false); setActiveTab('marketplace'); }, 3000); }} className="space-y-6">
+      <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 rounded-2xl p-8 max-w-2xl shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
+        <form onSubmit={(e) => { e.preventDefault(); setRegistrationSuccess(true); setTimeout(() => { setRegistrationSuccess(false); setActiveTab('marketplace'); }, 3000); }} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
-                <input type="text" required placeholder="e.g., Dr. Jane Doe" className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
+                <label className="block text-sm font-bold text-slate-300 mb-2">Full Name</label>
+                <input type="text" required placeholder="e.g., Dr. Jane Doe" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Current Role</label>
-                <input type="text" required placeholder="e.g., Lead Engineer" className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
+                <label className="block text-sm font-bold text-slate-300 mb-2">Current Role</label>
+                <input type="text" required placeholder="e.g., Lead Engineer" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
               </div>
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Company / Institution</label>
-            <input type="text" required placeholder="e.g., TechCorp Malaysia" className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
+            <label className="block text-sm font-bold text-slate-300 mb-2">Company / Institution</label>
+            <input type="text" required placeholder="e.g., TechCorp Malaysia" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Primary Expertise (Comma separated)</label>
-            <input type="text" required placeholder="e.g., Java, Data Science, System Architecture" className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
+            <label className="block text-sm font-bold text-slate-300 mb-2">Primary Expertise (Comma separated)</label>
+            <input type="text" required placeholder="e.g., Java, Data Science, System Architecture" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Desired Hourly Rate (RM)</label>
-              <input type="number" required placeholder="e.g., 150" className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
+              <label className="block text-sm font-bold text-slate-300 mb-2">Desired Hourly Rate (RM)</label>
+              <input type="number" required placeholder="e.g., 150" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">LinkedIn Profile URL</label>
-              <input type="url" required placeholder="https://linkedin.com/in/..." className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" />
+              <label className="block text-sm font-bold text-slate-300 mb-2">LinkedIn Profile URL</label>
+              <input type="url" required placeholder="https://linkedin.com/in/..." className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" />
             </div>
           </div>
-          <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl mt-6 transition-colors shadow-lg">Submit Application</button>
+          <button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3.5 rounded-lg mt-6 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.5)]">Submit Application</button>
         </form>
       </div>
     </div>
@@ -942,9 +1262,19 @@ export default function App() {
 
   const renderCandidatePortalView = () => {
     const activeContainer = safeContainers.find(c => c && c.id === activeCandidateUploadId);
-    if (!activeContainer) return (<div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center"><Activity className="w-12 h-12 text-blue-600 animate-spin mb-4" /><h2 className="text-xl font-bold text-slate-700">Connecting to HR Dashboard...</h2></div>);
-    if (isClosed) return (<div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 p-10 text-center animate-in fade-in zoom-in duration-300"><CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-900 mb-4">Upload Securely Transmitted</h2><p className="text-slate-500 mb-8 font-medium">Your documents have been actively synced to the HR dashboard.</p><div className="bg-slate-100 rounded-xl p-4 border border-slate-200"><p className="text-slate-700 font-bold">You may now safely close this browser tab.</p></div></div></div>);
-    return (<div className="fixed inset-0 bg-slate-50 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 p-10 text-center"><h2 className="text-2xl font-bold text-slate-900 mb-8">Secure Document Upload</h2>{uploadSuccess && <div className="py-6 flex flex-col items-center bg-green-50 rounded-xl mb-4 border border-green-200"><CheckCircle className="w-10 h-10 text-green-600 mb-2" /><h3 className="text-lg font-bold text-slate-800">Files successfully added!</h3><p className="text-slate-500 text-sm">You can select more files or click finish below.</p></div>}{sessionUploadedFiles.length > 0 && <div className="mb-6 text-left bg-slate-50 p-4 rounded-xl border border-slate-200 max-h-32 overflow-y-auto"><p className="font-bold text-sm text-slate-700 mb-2 border-b pb-2">Documents Uploaded to HR:</p>{sessionUploadedFiles.map((f, i) => (<div key={i} className="flex items-center text-xs text-slate-600 mt-1.5"><CheckCircle className="w-3.5 h-3.5 text-green-500 mr-2 flex-shrink-0" /> <span className="truncate font-medium">{f.name}</span></div>))}</div>}{isUploading ? (<div className="py-12 flex flex-col items-center"><Activity className="w-12 h-12 text-blue-600 animate-pulse mb-4" /><p className="font-bold text-slate-700">Analyzing Document Integrity...</p></div>) : (<div onClick={() => document.getElementById('fileInput').click()} className="border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-2xl p-12 cursor-pointer hover:bg-blue-50 transition-colors"><input id="fileInput" type="file" multiple className="hidden" onChange={handleCandidateUpload} onClick={(e) => e.stopPropagation()} /><FileDown className="w-12 h-12 text-blue-600 mx-auto mb-4" /><h3 className="text-lg font-bold text-slate-800">Click to select files</h3><p className="text-slate-500 text-xs">You can select multiple documents at once.</p></div>)}{!isUploading && <button onClick={() => { if (!isExternalLink) { setActiveTab('scanner'); setActiveCandidateUploadId(null); window.history.replaceState(null, '', window.location.pathname); } else { setIsClosed(true); } }} className="mt-8 bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-md hover:bg-slate-800">{isExternalLink ? "Finish and Close Tab" : "Finish and Return"}</button>}</div></div>);
+    if (!activeContainer) return (<div className="fixed inset-0 bg-slate-950 text-slate-100 z-50 flex flex-col p-6 items-center justify-center"><Activity className="w-12 h-12 text-cyan-400 animate-spin mb-4" /><h2 className="text-xl font-bold">Connecting to HR Dashboard...</h2></div>);
+    if (isClosed) return (<div className="fixed inset-0 bg-slate-950 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-slate-900/50 backdrop-blur-2xl w-full max-w-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.4)] border border-white/10 p-10 text-center animate-in fade-in zoom-in duration-300"><CheckCircle className="w-20 h-20 text-emerald-400 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-100 mb-4">Upload Securely Transmitted</h2><p className="text-slate-400 mb-8 font-medium">Your documents have been actively synced to the HR dashboard.</p><div className="bg-slate-950/50 rounded-xl p-4 border border-white/10"><p className="text-slate-300 font-bold">You may now safely close this browser tab.</p></div></div></div>);
+    return (<div className="fixed inset-0 bg-slate-950 z-50 flex flex-col p-6 items-center justify-center"><div className="bg-slate-900/50 backdrop-blur-2xl w-full max-w-xl rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.4)] border border-white/10 p-10 text-center"><h2 className="text-2xl font-bold text-slate-100 mb-8">Secure Document Upload</h2>{uploadSuccess && <div className="py-6 flex flex-col items-center bg-emerald-500/20 rounded-xl mb-4 border border-emerald-500/30"><CheckCircle className="w-10 h-10 text-emerald-400 mb-2" /><h3 className="text-lg font-bold text-emerald-400">Files successfully added!</h3><p className="text-emerald-500 text-sm">You can select more files or click finish below.</p></div>}
+
+    {!isUploading && !uploadSuccess && (
+      <div className="mb-6 text-left">
+        <label className="block text-sm font-bold text-slate-300 mb-2">Rename File(s) (Optional)</label>
+        <input type="text" value={candidateCustomName} onChange={(e) => setCandidateCustomName(e.target.value)} placeholder="e.g., JohnDoe-Resume" className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500 mb-2" />
+        <p className="text-xs text-slate-500">If multiple files are uploaded, a number will be added to the name.</p>
+      </div>
+    )}
+
+    {isUploading ? (<div className="py-12 flex flex-col items-center"><Activity className="w-12 h-12 text-cyan-400 animate-pulse mb-4" /><p className="font-bold text-slate-300">Analyzing Document Integrity...</p></div>) : (<div onClick={() => document.getElementById('fileInput').click()} className="border-2 border-dashed border-white/20 bg-slate-950/50 shadow-inner rounded-xl p-12 cursor-pointer hover:bg-slate-900 hover:border-blue-500 transition-colors"><input id="fileInput" type="file" multiple className="hidden" onChange={handleCandidateUpload} onClick={(e) => e.stopPropagation()} /><FileDown className="w-12 h-12 text-cyan-400 mx-auto mb-4" /><h3 className="text-lg font-bold text-slate-200">Click to select files</h3><p className="text-slate-400 text-xs mt-2">You can select multiple documents at once.</p></div>)}{!isUploading && <button onClick={() => { if (!isExternalLink) { setActiveTab('scanner'); setActiveCandidateUploadId(null); window.history.replaceState(null, '', window.location.pathname); } else { setIsClosed(true); } }} className="mt-8 w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-4 rounded-xl text-lg font-bold shadow-[0_4px_20px_rgba(59,130,246,0.3)] hover:from-cyan-400 hover:to-blue-500 transition-colors">{isExternalLink ? "Finish and Close Tab" : "Finish and Return"}</button>}</div></div>);
   };
 
   const renderSplitScreenModal = () => {
@@ -953,56 +1283,93 @@ export default function App() {
     if (!Array.isArray(report.files) || report.files.length === 0) return null;
     const activeFile = report.files[selectedFileIndex] || report.files[0];
     const isHighRisk = activeFile.score < 40;
-    
+
     const isPdfPreview = viewMode === 'original' && (activeFile.original?.startsWith('data:application/pdf') || activeFile.original?.toLowerCase().endsWith('.pdf'));
 
     return (
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 lg:p-8">
-        <div className="bg-white w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-          <div className="flex justify-between items-center px-8 py-5 border-b border-slate-200 bg-slate-50">
-            <div className="flex items-center space-x-4"><div className={`p-2.5 rounded-xl ${isHighRisk ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>{isHighRisk ? <AlertTriangle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}</div><div><h2 className="text-xl font-bold text-slate-900">Audit Report: {selectedContainer.name}</h2><p className="text-slate-400 text-xs mt-0.5">Sovereign Forensic Layer v2.0</p></div></div>
-            <div className="flex items-center space-x-3"><button onClick={handleExportPDF} disabled={isExportingPDF} className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-bold text-sm shadow-sm disabled:opacity-50">{isExportingPDF ? <Activity className="w-4 h-4 mr-2 animate-spin text-blue-600" /> : <Download className="w-4 h-4 mr-2" />} {isExportingPDF ? 'Generating...' : 'Export PDF'}</button><button onClick={() => { setSelectedContainer(null); setActiveAnomaly(null); setViewMode('original'); }} className="p-2 hover:bg-slate-200 rounded-full text-slate-400"><X className="w-6 h-6" /></button></div>
+      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4 lg:p-8">
+        <div className="bg-slate-900/50 backdrop-blur-2xl w-full max-w-7xl h-[90vh] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-white/10">
+          <div className="flex justify-between items-center px-8 py-5 border-b border-white/10 bg-slate-950/80">
+            <div className="flex items-center space-x-4"><div className={`p-2.5 rounded-lg shadow-inner border ${isHighRisk ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>{isHighRisk ? <AlertTriangle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}</div><div><h2 className="text-lg font-semibold text-slate-100">Audit Report: {selectedContainer.name}</h2><p className="text-slate-400 text-xs mt-0.5 font-medium">Sovereign Forensic Layer v2.0</p></div></div>
+            <div className="flex items-center space-x-3"><button onClick={handleExportPDF} disabled={isExportingPDF} className="flex items-center px-4 py-2 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg hover:bg-slate-700 transition-colors font-bold text-sm shadow-inner disabled:opacity-50">{isExportingPDF ? <Activity className="w-4 h-4 mr-2 animate-spin text-cyan-400" /> : <Download className="w-4 h-4 mr-2" />} {isExportingPDF ? 'Generating...' : 'Export PDF'}</button><button onClick={() => { setSelectedContainer(null); setActiveAnomaly(null); setViewMode('original'); }} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-6 h-6" /></button></div>
           </div>
           <div className="flex flex-1 overflow-hidden">
-            <div className="w-1/2 p-8 border-r border-slate-200 overflow-y-auto bg-white">
-              <div className="flex justify-between mb-8"><div><p className="text-slate-500 font-medium mb-1">Document Trust</p><div className={`text-6xl font-black ${isHighRisk ? 'text-red-600' : 'text-green-600'}`}>{activeFile.score}%</div></div><div className="text-right"><p className="text-slate-500 font-medium mb-1">Status</p><div className={`px-4 py-1.5 rounded-full font-bold border ${isHighRisk ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>{isHighRisk ? 'FRAUD DETECTED' : 'AUTHENTIC'}</div></div></div>
-              <div className={`p-6 rounded-2xl mb-8 border ${isHighRisk ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-200'}`}><h4 className="font-bold flex items-center mb-2 text-slate-800"><Activity className="w-5 h-5 mr-2 text-blue-600" /> AI Verdict</h4><p className="font-medium text-slate-700 leading-relaxed">{activeFile.issue}</p></div>
+            <div className="w-1/2 p-8 border-r border-white/10 overflow-y-auto bg-slate-900/30">
+              <div className="flex justify-between mb-8 items-start">
+                <div>
+                  <p className="text-slate-400 font-medium mb-1">Document Trust</p>
+                  <div className={`text-6xl font-black drop-shadow-md ${isHighRisk ? 'text-red-400' : 'text-emerald-400'}`}>{activeFile.score}%</div>
+                </div>
+                <div className="text-right flex flex-col items-end">
+                  <p className="text-slate-400 font-medium mb-1">AI Status</p>
+                  <div className={`px-4 py-1.5 rounded-full font-bold border mb-3 shadow-inner ${isHighRisk ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>{isHighRisk ? 'FRAUD DETECTED' : 'AUTHENTIC'}</div>
+
+                  {isHighRisk && (
+                    <select
+                      value={activeFile.investigation_status || 'Unreviewed'}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        setContainers(prev => prev.map(con => {
+                           if (con.id === selectedContainer.id && con.data && Array.isArray(con.data.files)) {
+                              return { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === activeFile.name ? { ...f, investigation_status: newStatus } : f) } };
+                           }
+                           return con;
+                        }));
+                        setSelectedContainer(prev => {
+                           if (!prev) return prev;
+                           return { ...prev, data: { ...prev.data, files: prev.data.files.map(f => f.name === activeFile.name ? { ...f, investigation_status: newStatus } : f) } };
+                        });
+                      }}
+                      className={`text-xs w-48 rounded-md px-2 py-1 outline-none border font-bold shadow-sm transition-colors cursor-pointer ${
+                        activeFile.investigation_status === 'Investigated - Fraud' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                        activeFile.investigation_status === 'Investigated - Not Scam' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                        activeFile.investigation_status === 'Investigation Ongoing' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                        'bg-slate-950/80 text-slate-300 border-white/10'
+                      }`}
+                    >
+                      <option value="Unreviewed">HR: Unreviewed</option>
+                      <option value="Investigation Ongoing">HR: Investigation Ongoing</option>
+                      <option value="Investigated - Not Scam">HR: Investigated - Not Scam</option>
+                      <option value="Investigated - Fraud">HR: Investigated - Fraud</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              <div className={`p-6 rounded-2xl mb-8 border shadow-inner ${isHighRisk ? 'bg-red-500/10 border-red-500/20' : 'bg-slate-950/50 border-white/10'}`}><h4 className="font-bold flex items-center mb-2 text-slate-100"><Activity className="w-5 h-5 mr-2 text-cyan-400" /> AI Verdict</h4><p className="font-medium text-slate-300 leading-relaxed">{activeFile.issue}</p></div>
               {Array.isArray(activeFile.flagged_claims) && activeFile.flagged_claims.map((claim, idx) => (
-                <div key={idx} onClick={() => setActiveAnomaly(activeAnomaly === idx ? null : idx)} className={`bg-white border rounded-xl p-5 shadow-sm mb-4 cursor-pointer transition-all ${activeAnomaly === idx ? 'ring-2 ring-yellow-400 border-yellow-400 scale-[1.02]' : 'border-slate-200 hover:border-blue-300'}`}>
-                  <div className="bg-yellow-100 text-slate-800 font-mono text-xs px-2 py-1 rounded mb-3 inline-block font-bold">Extract: "{claim.claim}"</div>
-                  
-                  <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg mb-2">
+                <div key={idx} onClick={() => setActiveAnomaly(activeAnomaly === idx ? null : idx)} className={`bg-slate-950/50 border rounded-2xl p-4 shadow-inner mb-4 cursor-pointer transition-all ${activeAnomaly === idx ? 'ring-2 ring-yellow-500/50 border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'border-white/10 hover:border-blue-500/50 hover:shadow-lg'}`}>
+                  <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 font-mono text-xs px-2 py-1 rounded mb-3 inline-block font-bold">Extract: "{claim.claim}"</div>
+
+                  <p className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg mb-2 border border-red-500/20 shadow-inner">
                     <span className="font-bold">Flag:</span> {claim.hr_note}
                   </p>
-                  
+
                   {claim.interview_question && (
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                      <p className="text-blue-800 text-sm">
-                        <span className="font-bold text-blue-900">Suggested Question:</span> {claim.interview_question}
+                    <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20 shadow-inner">
+                      <p className="text-blue-300 text-sm">
+                        <span className="font-bold text-cyan-400">Suggested Question:</span> {claim.interview_question}
                       </p>
                     </div>
                   )}
 
-                  {!claim.box_hidden && <p className="text-xs text-slate-400 mt-3 font-bold text-right hover:text-blue-500">Click to locate on document ➔</p>}
+                  {!claim.box_hidden && <p className="text-xs text-slate-500 mt-3 font-bold text-right hover:text-cyan-400">Click to locate on document ➔</p>}
                 </div>
               ))}
             </div>
 
-            {/* --- FIX 2: NEW SCROLLING DOCUMENT VIEWER LAYOUT --- */}
-            <div className="w-1/2 bg-[#f8fafc] flex flex-col relative overflow-hidden">
-              {Array.isArray(report.files) && <div className="bg-white border-b border-slate-200 px-4 pt-4 flex space-x-2 overflow-x-auto z-20 shadow-sm">{report.files.map((f, idx) => (<button key={idx} onClick={() => { setSelectedFileIndex(idx); setViewMode('original'); setActiveAnomaly(null); }} className={`px-4 py-2.5 text-sm font-bold rounded-t-lg transition-colors border-t border-l border-r ${selectedFileIndex === idx ? 'bg-[#f8fafc] text-blue-600 border-slate-200' : 'bg-white text-slate-400 border-transparent hover:bg-slate-50'}`}>{typeof f === 'string' ? f : f.name}</button>))}</div>}
-              
-              {/* Sticky Toggle Bar */}
-              <div className="bg-white border-b border-slate-200 p-3 flex justify-center z-10 shadow-sm">
-                  <div className="bg-slate-100 p-1 rounded-full inline-flex">
-                      <button onClick={() => setViewMode('original')} className={`flex items-center space-x-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Eye className="w-4 h-4" /> <span>Original</span></button>
-                      <button onClick={() => setViewMode('heatmap')} className={`flex items-center space-x-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'heatmap' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Activity className="w-4 h-4" /> <span>Heatmap Overlay</span></button>
+            <div className="w-1/2 bg-slate-950/80 backdrop-blur-xl border-l border-white/5 flex flex-col relative overflow-hidden">
+              {Array.isArray(report.files) && <div className="bg-slate-900/50 backdrop-blur-2xl border-b border-white/10 px-4 pt-4 flex space-x-2 overflow-x-auto z-20 shadow-sm">{report.files.map((f, idx) => (<button key={idx} onClick={() => { setSelectedFileIndex(idx); setViewMode('original'); setActiveAnomaly(null); }} className={`px-4 py-2.5 text-sm font-bold rounded-t-lg transition-colors border-t border-l border-r ${selectedFileIndex === idx ? 'bg-slate-800 text-blue-400 border-white/20' : 'bg-transparent text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-slate-200'}`}>{typeof f === 'string' ? f : f.name}</button>))}</div>}
+
+              <div className="bg-slate-900/50 backdrop-blur-2xl border-b border-white/10 p-3 flex justify-center z-10 shadow-sm">
+                  <div className="bg-slate-950/50 border border-white/5 shadow-inner p-1 rounded-full inline-flex">
+                      <button onClick={() => setViewMode('original')} className={`flex items-center space-x-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-slate-800 text-slate-100 shadow-md' : 'text-slate-400 hover:text-slate-200'}`}><Eye className="w-4 h-4" /> <span>Original</span></button>
+                      <button onClick={() => setViewMode('heatmap')} className={`flex items-center space-x-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${viewMode === 'heatmap' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}><Activity className="w-4 h-4" /> <span>Heatmap Overlay</span></button>
                   </div>
               </div>
 
-              {/* Scrollable Area for Tall Images */}
-              <div className="flex-1 overflow-y-auto p-6 bg-slate-200/50">
-                  <div className="max-w-4xl mx-auto shadow-xl bg-white border border-slate-300 rounded-xl relative overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 bg-slate-950">
+                  <div className="max-w-4xl mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.5)] bg-slate-900 border border-white/10 rounded-lg relative overflow-hidden">
                       {viewMode === 'original' ? (
                           isPdfPreview ? (
                               <iframe src={activeFile.original} className="w-full border-none" title="PDF Preview" style={{ height: '80vh' }} />
@@ -1011,32 +1378,30 @@ export default function App() {
                           )
                       ) : (
                           activeFile.heatmap ? (
-                              <img src={activeFile.heatmap} alt="ELA Heatmap Overlay" className="w-full h-auto block bg-slate-800" />
+                              <img src={activeFile.heatmap} alt="ELA Heatmap Overlay" className="w-full h-auto block bg-slate-950" />
                           ) : (
-                              <div className="flex items-center justify-center p-20 text-slate-500 font-bold text-center">
+                              <div className="flex items-center justify-center p-20 text-slate-400 font-bold text-center bg-slate-950 border border-white/5 rounded-lg">
                                   Heatmap Analysis Unavailable.<br/>Document is likely purely digital (Resume) or could not be processed.
                               </div>
                           )
                       )}
 
-                      {/* Yellow Bounding Box Layer */}
                       {activeAnomaly !== null && Array.isArray(activeFile.flagged_claims) && activeFile.flagged_claims[activeAnomaly] && !activeFile.flagged_claims[activeAnomaly].box_hidden && viewMode === 'original' && !isPdfPreview && (
-                          <div ref={claimBoxRef} className="absolute bg-yellow-400/60 z-20 transition-all duration-500 shadow-[0_0_0_2px_#eab308]" 
-                               style={{ 
-                                   top: `${activeFile.flagged_claims[activeAnomaly].y_position}%`, 
-                                   left: `${activeFile.flagged_claims[activeAnomaly].x_position}%`, 
-                                   width: `${activeFile.flagged_claims[activeAnomaly].box_width}%`, 
-                                   height: `${activeFile.flagged_claims[activeAnomaly].box_height}%`, 
-                                   mixBlendMode: 'multiply'
+                          <div ref={claimBoxRef} className="absolute bg-yellow-500/60 z-20 transition-all duration-500 shadow-[0_0_0_2px_#eab308]"
+                               style={{
+                                   top: `${activeFile.flagged_claims[activeAnomaly].y_position}%`,
+                                   left: `${activeFile.flagged_claims[activeAnomaly].x_position}%`,
+                                   width: `${activeFile.flagged_claims[activeAnomaly].box_width}%`,
+                                   height: `${activeFile.flagged_claims[activeAnomaly].box_height}%`,
+                                   mixBlendMode: 'normal'
                                }}>
-                               <div className="absolute -top-7 -left-0.5 bg-yellow-500 text-white text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase whitespace-nowrap">
+                               <div className="absolute -top-7 -left-0.5 bg-yellow-500 text-slate-900 text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase whitespace-nowrap">
                                    {activeFile.flagged_claims[activeAnomaly].page_num ? `Evidence on Pg ${activeFile.flagged_claims[activeAnomaly].page_num}` : 'Target Locked'}
                                </div>
                           </div>
                       )}
                   </div>
               </div>
-              {/* --- END FIX 2 --- */}
 
             </div>
           </div>
@@ -1048,23 +1413,666 @@ export default function App() {
   const renderExpertDetailModal = () => {
     if (!selectedExpertDetail) return null;
     const expert = selectedExpertDetail;
-    return (<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200"><div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50"><h2 className="text-xl font-bold text-slate-900">Expert Profile</h2><button onClick={() => setSelectedExpertDetail(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X className="w-5 h-5"/></button></div><div className="p-8 overflow-y-auto flex-1"><div className="flex flex-col md:flex-row items-start md:space-x-6 mb-8"><img src={expert.image} alt={expert.name} className="w-24 h-24 rounded-full border-2 border-slate-200 object-cover mb-4 md:mb-0" /><div className="flex-1"><h1 className="text-2xl font-bold text-slate-900">{expert.name}</h1><p className="text-[#4f46e5] font-medium text-lg">{expert.role} @ {expert.company}</p><div className="flex items-center text-sm mt-2 mb-4"><Star className="w-5 h-5 text-amber-400 fill-amber-400 mr-1.5" /><span className="font-bold text-slate-900 mr-1.5 text-base">{expert.rating}</span><span className="text-slate-500">({expert.reviews} verified reviews)</span></div><div className="flex flex-wrap gap-2">{expert.skills.map(s => <span key={s} className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-md">{s}</span>)}</div></div><div className="mt-6 md:mt-0 w-full md:w-auto"><button onClick={() => { setSelectedExpertDetail(null); setBookingExpert(expert); }} className="w-full bg-[#4f46e5] hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl font-bold shadow-md transition-colors">Book ({expert.rate})</button></div></div><div className="mb-10"><h3 className="text-lg font-bold text-slate-900 mb-3 border-b border-slate-100 pb-2">About {expert.name.split(' - ')[0]}</h3><p className="text-slate-600 leading-relaxed">{expert.bio}</p></div><div><h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center border-b border-slate-100 pb-2"><MessageSquare className="w-5 h-5 mr-2 text-slate-400" /> Recent Reviews</h3><div className="space-y-4">{expert.reviewList.map((r, i) => (<div key={i} className="bg-slate-50 p-5 rounded-xl border border-slate-100"><div className="flex items-center justify-between mb-2"><span className="font-bold text-sm text-slate-800">{r.author}</span><div className="flex">{[...Array(r.rating)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />)}</div></div><p className="text-sm text-slate-600 italic">"{r.text}"</p></div>))}</div></div></div></div></div>);
+    return (
+      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-900/50 border border-white/10 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 shadow-[0_8px_40px_rgba(0,0,0,0.5)]">
+          <div className="p-5 border-b border-white/10 flex justify-between items-center bg-slate-950/80">
+            <h2 className="text-lg font-semibold text-slate-100">Expert Profile</h2>
+            <button onClick={() => setSelectedExpertDetail(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-4 h-4"/></button>
+          </div>
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className="flex flex-col md:flex-row items-start md:gap-5 mb-6">
+              <img src={expert.image} alt={expert.name} className="w-16 h-16 rounded-full border-2 border-slate-700 object-cover mb-3 md:mb-0 shadow-lg" />
+              <div className="flex-1">
+                <h1 className="text-xl font-semibold text-slate-100">{expert.name}</h1>
+                <p className="text-cyan-400 text-sm font-medium">{expert.role} @ {expert.company}</p>
+                <div className="flex items-center text-sm mt-2">
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400 mr-1" />
+                  <span className="font-medium text-slate-200 mr-1">{expert.rating}</span>
+                  <span className="text-slate-500">({expert.reviews} reviews)</span>
+                </div>
+              </div>
+              <div className="mt-4 md:mt-0 w-full md:w-auto">
+                <button onClick={() => { setSelectedExpertDetail(null); setBookingExpert(expert); }} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)]">Book ({expert.rate})</button>
+              </div>
+            </div>
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-slate-200 mb-2 pb-2 border-b border-white/10">About</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{expert.bio}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200 mb-3 pb-2 border-b border-white/10 flex items-center"><MessageSquare className="w-4 h-4 mr-2 text-cyan-400" /> Reviews</h3>
+              <div className="space-y-3">
+                {expert.reviewList.map((r, i) => (
+                  <div key={i} className="bg-slate-950/50 p-4 rounded-xl border border-white/10 shadow-inner">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm text-slate-200">{r.author}</span>
+                      <div className="flex">{[...Array(r.rating)].map((_, j) => <Star key={j} className="w-3 h-3 text-amber-400 fill-amber-400" />)}</div>
+                    </div>
+                    <p className="text-sm text-slate-400">"{r.text}"</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  if (isExternalLink) return (<div className="flex h-screen font-sans bg-slate-50 text-slate-800 overflow-hidden relative">{renderCandidatePortalView()}{toastMessage && (<div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300"><div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center border-l-4 border-emerald-500"><CheckCircle className="w-6 h-6 text-emerald-500 mr-3 flex-shrink-0" /><p className="font-bold pr-6">{toastMessage}</p><button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white transition-colors"><X className="w-5 h-5" /></button></div></div>)}</div>);
+  const renderLandingPage = () => {
+    const stats = [
+      { value: '50K+', label: 'Documents Analyzed' },
+      { value: '99.8%', label: 'Detection Accuracy' },
+      { value: '500+', label: 'Companies Trust Us' },
+      { value: '24/7', label: 'AI Processing' }
+    ];
+
+    const features = [
+      {
+        icon: <Activity className="w-6 h-6" />,
+        title: 'ELA Heatmap Analysis',
+        desc: 'Error Level Analysis reveals pixel-level tampering invisible to the naked eye. Our AI highlights manipulated regions with precision.',
+        color: 'from-red-500/20 to-orange-500/20',
+        iconColor: 'text-red-400',
+        borderColor: 'border-red-500/20'
+      },
+      {
+        icon: <FileText className="w-6 h-6" />,
+        title: 'Multi-Document Support',
+        desc: 'Analyze resumes, payslips, medical certificates, expense receipts, and more. All major formats supported including PDF and images.',
+        color: 'from-blue-500/20 to-cyan-500/20',
+        iconColor: 'text-blue-400',
+        borderColor: 'border-blue-500/20'
+      },
+      {
+        icon: <Users className="w-6 h-6" />,
+        title: 'Expert Verification Network',
+        desc: 'When AI flags concerns, connect with certified forensic experts for deep-dive technical interviews and human verification.',
+        color: 'from-purple-500/20 to-pink-500/20',
+        iconColor: 'text-purple-400',
+        borderColor: 'border-purple-500/20'
+      },
+      {
+        icon: <Shield className="w-6 h-6" />,
+        title: 'Enterprise-Grade Security',
+        desc: 'End-to-end encryption, GDPR compliance, and SOC 2 Type II certified infrastructure. Your data never leaves secure environments.',
+        color: 'from-emerald-500/20 to-teal-500/20',
+        iconColor: 'text-emerald-400',
+        borderColor: 'border-emerald-500/20'
+      },
+      {
+        icon: <Search className="w-6 h-6" />,
+        title: 'Claim Extraction & Verification',
+        desc: 'AI extracts specific claims from documents and cross-references them for consistency. Flagged discrepancies include suggested interview questions.',
+        color: 'from-amber-500/20 to-yellow-500/20',
+        iconColor: 'text-amber-400',
+        borderColor: 'border-amber-500/20'
+      },
+      {
+        icon: <BarChart2 className="w-6 h-6" />,
+        title: 'Comprehensive Reporting',
+        desc: 'Generate detailed forensic audit reports with evidence, heatmaps, and risk scores. Export as PDF for compliance and documentation.',
+        color: 'from-cyan-500/20 to-blue-500/20',
+        iconColor: 'text-cyan-400',
+        borderColor: 'border-cyan-500/20'
+      }
+    ];
+
+    const testimonials = [
+      {
+        quote: "ForensikGaji caught 3 fraudulent resumes in our first month. The ELA heatmap analysis is incredibly accurate—it spotted manipulations we would have never caught manually.",
+        author: "Sarah Chen",
+        role: "HR Director, TechVentures Asia",
+        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=100&q=80"
+      },
+      {
+        quote: "The expert marketplace is brilliant. When the AI flags high-risk candidates, we can book specialized interviews. Saved us from a bad hire that could have cost RM50K+.",
+        author: "Ahmad Razak",
+        role: "CTO, FinTech Malaysia",
+        avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=100&q=80"
+      },
+      {
+        quote: "Implementation took less than a day. Our hiring managers love the simple workflow—generate link, candidate uploads, get results. No training needed.",
+        author: "Priya Sharma",
+        role: "Talent Acquisition Lead, StartupX",
+        avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=100&q=80"
+      }
+    ];
+
+    const faqs = [
+      {
+        q: "How accurate is the fraud detection?",
+        a: "Our AI achieves 99.8% accuracy in detecting document tampering based on our validation dataset. The ELA (Error Level Analysis) technique identifies pixel compression inconsistencies that occur when portions of an image are edited or manipulated."
+      },
+      {
+        q: "What types of documents can you analyze?",
+        a: "We support resumes, CVs, payslips, medical certificates (MC), expense receipts, offer letters, and most HR-related documents. Formats include PDF, PNG, JPEG, and more."
+      },
+      {
+        q: "Is my data secure and private?",
+        a: "Absolutely. All documents are encrypted in transit and at rest. We're GDPR compliant and SOC 2 Type II certified. Documents are automatically deleted after 30 days, and you can delete them anytime."
+      },
+      {
+        q: "What happens when fraud is detected?",
+        a: "When our AI detects potential tampering, the document receives a low risk score. You'll see highlighted anomalies with suggested interview questions to verify claims during the interview."
+      },
+      {
+        q: "Can I integrate this with my existing ATS?",
+        a: "Yes! Our Professional and Enterprise plans include API access for seamless integration with major ATS platforms like Greenhouse, Lever, and Workday."
+      }
+    ];
+
+    return (
+      <div className="w-full overflow-y-auto bg-slate-950">
+        {/* Navigation */}
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-3 cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
+                <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-2 rounded-xl shadow-lg shadow-cyan-500/20">
+                  <Shield className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold text-white">Forensik<span className="text-cyan-400">Gaji</span></span>
+              </div>
+              <div className="hidden md:flex items-center space-x-8">
+                <button onClick={() => document.getElementById('features-section')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">Features</button>
+                <button onClick={() => document.getElementById('how-it-works')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">How It Works</button>
+                <button onClick={() => document.getElementById('pricing')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">Pricing</button>
+                <button onClick={() => document.getElementById('faq')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">FAQ</button>
+              </div>
+              <div className="flex items-center space-x-4">
+                <button onClick={() => setActiveTab('scanner')} className="hidden sm:block text-slate-400 hover:text-white text-sm font-medium transition-colors">Sign In</button>
+                <button onClick={() => setActiveTab('scanner')} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-cyan-500/25 transition-all">
+                  Start Free Trial
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        {/* Hero Section */}
+        <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+          {/* Background elements */}
+          <div className="absolute inset-0 bg-gradient-to-b from-blue-950/20 via-transparent to-transparent"></div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+          <div className="relative max-w-7xl mx-auto">
+            <div className="text-center max-w-4xl mx-auto">
+              {/* Headline */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+                Stop Hiring Fraud.
+                <span className="block bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent mt-2">
+                  Verify with AI Forensics.
+                </span>
+              </h1>
+
+              {/* Subheadline */}
+              <p className="text-lg sm:text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Detect document tampering in seconds with enterprise-grade AI. ELA heatmaps, claim extraction, and expert verification—all in one platform.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                <button
+                  onClick={() => setActiveTab('scanner')}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-8 py-4 rounded-xl text-base font-semibold shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center group"
+                >
+                  Start Free Trial
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <a
+                  href="https://youtu.be/2ju8OihCAEc" target="_blank" rel="noopener noreferrer"
+                  className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-white px-8 py-4 rounded-xl text-base font-medium transition-all flex items-center justify-center"
+                >
+                  <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center mr-3">
+                    <Play className="w-4 h-4 text-white ml-0.5" />
+                  </div>
+                  Watch Demo
+                </a>
+              </div>
+
+              {/* Trust badges */}
+              <div className="flex flex-wrap items-center justify-center gap-8 text-slate-500 text-sm">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  <span>No credit card required</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  <span>5 free document scans</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  <span>Setup in 2 minutes</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20 max-w-5xl mx-auto">
+              {stats.map((stat, i) => (
+                <div key={i} className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-white mb-1">{stat.value}</div>
+                  <div className="text-sm text-slate-400">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Logos Section */}
+        <section className="py-12 border-y border-white/5 bg-slate-900/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p className="text-center text-sm text-slate-500 mb-8">TRUSTED BY LEADING COMPANIES</p>
+            <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 opacity-50">
+              {['TechVentures', 'FinTech MY', 'StartupX', 'CloudSec', 'DataCorp'].map((company, i) => (
+                <span key={i} className="text-xl font-bold text-slate-400">{company}</span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section id="features-section" className="py-24 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-block bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-4 py-2 mb-4">
+                <span className="text-cyan-400 text-sm font-semibold">FEATURES</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Enterprise-Grade Document Forensics
+              </h2>
+              <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+                Powerful AI tools to detect fraud, verify claims, and streamline your hiring process
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {features.map((feature, i) => (
+                <div key={i} className="group bg-slate-900/50 border border-white/5 hover:border-white/10 rounded-2xl p-6 transition-all hover:bg-slate-900/80">
+                  <div className={`bg-gradient-to-br ${feature.color} w-14 h-14 rounded-xl flex items-center justify-center border ${feature.borderColor} mb-5`}>
+                    <span className={feature.iconColor}>{feature.icon}</span>
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
+                  <p className="text-slate-400 leading-relaxed">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-slate-900/30 to-transparent">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-block bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2 mb-4">
+                <span className="text-blue-400 text-sm font-semibold">HOW IT WORKS</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Verify Documents in 3 Simple Steps
+              </h2>
+              <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+                No technical expertise required. Get started in minutes.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {[
+                {
+                  step: '01',
+                  icon: <LinkIcon className="w-8 h-8" />,
+                  title: 'Create Secure Upload Link',
+                  desc: 'Generate a unique, encrypted portal link for your candidate. Specify required documents like resume, payslip, or certificates.',
+                  details: ['Customizable document requirements', 'Branded upload portal', 'Expiry settings for security']
+                },
+                {
+                  step: '02',
+                  icon: <UploadCloud className="w-8 h-8" />,
+                  title: 'Candidate Uploads Documents',
+                  desc: 'Candidate uploads documents through the secure portal. They see only a clean upload interface—no access to your dashboard.',
+                  details: ['Mobile-friendly upload', 'Multi-file support', 'Real-time progress tracking']
+                },
+                {
+                  step: '03',
+                  icon: <FileText className="w-8 h-8" />,
+                  title: 'Receive AI Analysis Report',
+                  desc: 'Our AI scans documents for tampering, extracts claims, and generates a comprehensive forensic report with risk scores.',
+                  details: ['ELA heatmap visualization', 'Flagged claim extraction', 'Suggested interview questions']
+                }
+              ].map((step, i) => (
+                <div key={i} className="relative">
+                  <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-8 h-full">
+                    <div className="text-7xl font-black text-slate-800 absolute -top-4 -left-2">{step.step}</div>
+                    <div className="relative z-10">
+                      <div className="bg-gradient-to-br from-cyan-500/20 to-blue-500/20 w-16 h-16 rounded-2xl flex items-center justify-center border border-cyan-500/20 mb-6 text-cyan-400">
+                        {step.icon}
+                      </div>
+                      <h3 className="text-xl font-semibold text-white mb-3">{step.title}</h3>
+                      <p className="text-slate-400 mb-6">{step.desc}</p>
+                      <ul className="space-y-2">
+                        {step.details.map((detail, j) => (
+                          <li key={j} className="flex items-center text-sm text-slate-500">
+                            <CheckCircle className="w-4 h-4 text-cyan-500 mr-2" />
+                            {detail}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  {i < 2 && <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-cyan-500/50 to-transparent"></div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Testimonials */}
+        <section className="py-24 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-block bg-purple-500/10 border border-purple-500/20 rounded-lg px-4 py-2 mb-4">
+                <span className="text-purple-400 text-sm font-semibold">TESTIMONIALS</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Trusted by HR Teams Worldwide
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {testimonials.map((testimonial, i) => (
+                <div key={i} className="bg-slate-900/50 border border-white/5 rounded-2xl p-6">
+                  <div className="flex items-center mb-4">
+                    {[...Array(5)].map((_, j) => (
+                      <Star key={j} className="w-5 h-5 text-amber-400 fill-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-slate-300 mb-6 leading-relaxed">"{testimonial.quote}"</p>
+                  <div className="flex items-center">
+                    <img src={testimonial.avatar} alt={testimonial.author} className="w-12 h-12 rounded-full object-cover mr-4" />
+                    <div>
+                      <div className="text-white font-semibold">{testimonial.author}</div>
+                      <div className="text-slate-500 text-sm">{testimonial.role}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing Section */}
+        <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-slate-900/30 to-transparent">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-block bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2 mb-4">
+                <span className="text-emerald-400 text-sm font-semibold">PRICING</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Simple, Transparent Pricing
+              </h2>
+              <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+                Start free, upgrade when you need more. No hidden fees.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {[
+                {
+                  name: 'Starter',
+                  description: 'Perfect for small teams and startups',
+                  price: 'Free',
+                  period: 'forever',
+                  features: ['5 document scans per month', 'Basic AI fraud detection', 'ELA heatmap analysis', 'Email support', '7-day data retention'],
+                  cta: 'Get Started Free',
+                  popular: false
+                },
+                {
+                  name: 'Professional',
+                  description: 'For growing companies with higher volume',
+                  price: 'RM99',
+                  period: '/month',
+                  features: ['100 document scans per month', 'Advanced AI + GPT-4 Vision', 'Expert marketplace access', 'Priority email support', '30-day data retention', 'Custom branding', 'API access'],
+                  cta: 'Start 14-Day Trial',
+                  popular: true
+                },
+                {
+                  name: 'Enterprise',
+                  description: 'For large organizations with custom needs',
+                  price: 'Custom',
+                  period: '',
+                  features: ['Unlimited document scans', 'Custom AI model training', 'Dedicated account manager', 'SLA guarantee', 'Unlimited data retention', 'SSO & advanced security', 'Custom integrations'],
+                  cta: 'Contact Sales',
+                  popular: false
+                }
+              ].map((plan, i) => (
+                <div key={i} className={`relative ${plan.popular ? 'md:-mt-4 md:mb-4' : ''}`}>
+                  {plan.popular && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold px-4 py-1 rounded-full">
+                      Most Popular
+                    </div>
+                  )}
+                  <div className={`bg-slate-900/50 border rounded-2xl p-8 h-full ${plan.popular ? 'border-cyan-500/50 shadow-lg shadow-cyan-500/10' : 'border-white/5'}`}>
+                    <div className="mb-6">
+                      <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+                      <p className="text-slate-400 text-sm">{plan.description}</p>
+                    </div>
+                    <div className="mb-6">
+                      <span className="text-4xl font-bold text-white">{plan.price}</span>
+                      <span className="text-slate-400">{plan.period}</span>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('scanner')}
+                      className={`w-full py-3 rounded-xl font-semibold mb-6 transition-all ${
+                        plan.popular
+                          ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25 hover:from-cyan-400 hover:to-blue-500'
+                          : 'bg-slate-800 text-white hover:bg-slate-700 border border-slate-700'
+                      }`}
+                    >
+                      {plan.cta}
+                    </button>
+                    <ul className="space-y-3">
+                      {plan.features.map((feature, j) => (
+                        <li key={j} className="flex items-start text-sm text-slate-300">
+                          <CheckCircle className={`w-5 h-5 mr-3 flex-shrink-0 ${plan.popular ? 'text-cyan-400' : 'text-slate-500'}`} />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-block bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2 mb-4">
+                <span className="text-amber-400 text-sm font-semibold">FAQ</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Frequently Asked Questions
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              {faqs.map((faq, i) => (
+                <details key={i} className="group bg-slate-900/50 border border-white/5 rounded-xl overflow-hidden">
+                  <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-900/80 transition-colors">
+                    <span className="text-white font-semibold pr-4">{faq.q}</span>
+                    <ChevronRight className="w-5 h-5 text-slate-500 group-open:rotate-90 transition-transform flex-shrink-0" />
+                  </summary>
+                  <div className="px-6 pb-6 text-slate-400 leading-relaxed border-t border-white/5 pt-4">
+                    {faq.a}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-white/5 py-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+              <div className="col-span-2">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-2 rounded-xl">
+                    <Shield className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-xl font-bold text-white">Forensik<span className="text-cyan-400">Gaji</span></span>
+                </div>
+                <p className="text-slate-400 text-sm mb-6 max-w-xs">
+                  Enterprise-grade AI forensics for HR document verification. Stop fraud, hire with confidence.
+                </p>
+              </div>
+              {[
+                { title: 'Product', links: ['Features', 'Pricing', 'API', 'Integrations'] },
+                { title: 'Company', links: ['About', 'Blog', 'Careers', 'Press'] },
+                { title: 'Resources', links: ['Documentation', 'Help Center', 'Status', 'Security'] }
+              ].map((col, i) => (
+                <div key={i}>
+                  <h4 className="text-white font-semibold mb-4">{col.title}</h4>
+                  <ul className="space-y-3">
+                    {col.links.map((link, j) => (
+                      <li key={j}>
+                        <button className="text-slate-400 hover:text-white text-sm transition-colors">{link}</button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-slate-500 text-sm">© 2025 ForensikGaji. All rights reserved.</p>
+              <div className="flex space-x-6 text-sm text-slate-400">
+                <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  };
+
+  if (isExternalLink) return (<div className="flex h-screen font-sans bg-gray-100 text-gray-800 overflow-hidden relative">{renderCandidatePortalView()}{toastMessage && (<div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300"><div className="bg-white/90 backdrop-blur-sm text-gray-800 px-6 py-4 rounded-xl shadow-lg flex items-center border border-gray-200"><CheckCircle className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" /><p className="font-medium pr-6">{toastMessage}</p><button onClick={() => setToastMessage(null)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-5 h-5" /></button></div></div>)}</div>);
 
   return (
-    <div className="flex h-screen font-sans bg-white text-slate-800 overflow-hidden relative">
-      {renderSidebar()}
-      <main className="flex-1 h-screen overflow-y-auto relative bg-slate-50 border-l border-slate-200 shadow-[-10px_0_30px_rgba(0,0,0,0.05)] z-0">{activeTab === 'scanner' && renderForensicScannerView()}{activeTab === 'marketplace' && renderMarketplaceView()}{activeTab === 'register' && renderExpertRegistrationView()}</main>
+    <div className="flex h-screen font-sans bg-slate-950 text-slate-100 overflow-hidden relative">
+      <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[50%] bg-cyan-500/10 rounded-full blur-[200px] pointer-events-none"></div>
+      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[50%] bg-blue-500/10 rounded-full blur-[200px] pointer-events-none"></div>
+
+      {activeTab === 'landing' ? renderLandingPage() : (
+        <div className="z-10 flex h-screen w-full relative">
+          {renderSidebar()}
+          <main className="flex-1 h-screen overflow-y-auto relative bg-slate-950/50 backdrop-blur-sm z-10 border-l border-white/5">
+            {activeTab === 'scanner' && renderForensicScannerView()}
+            {activeTab === 'new_entry' && renderNewEntryView()}
+            {activeTab === 'marketplace' && renderMarketplaceView()}
+            {activeTab === 'register' && renderExpertRegistrationView()}
+          </main>
+        </div>
+      )}
       {activeTab === 'candidate_portal' && renderCandidatePortalView()}
       {renderSplitScreenModal()}
       {renderExpertDetailModal()}
-      {toastMessage && (<div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300"><div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center border-l-4 border-emerald-500"><CheckCircle className="w-6 h-6 text-emerald-500 mr-3 flex-shrink-0" /><p className="font-bold pr-6">{toastMessage}</p><button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white transition-colors"><X className="w-5 h-5" /></button></div></div>)}
-      {containerToRename && (<div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200"><div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold text-slate-900">Rename Audit Case</h2><button onClick={() => setContainerToRename(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-5 h-5"/></button></div><form onSubmit={confirmRename}><input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="w-full border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-500 outline-none mb-6 font-medium text-slate-800" autoFocus required /><div className="flex space-x-3"><button type="button" onClick={() => setContainerToRename(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors">Cancel</button><button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">Save Changes</button></div></form></div></div>)}
-      {containerToDelete && (<div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200"><div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6"><Trash2 className="w-8 h-8 text-red-600" /></div><h2 className="text-2xl font-bold text-slate-900 mb-2">Delete Audit Case?</h2><p className="text-slate-500 mb-8">This action cannot be undone. Are you sure you want to permanently remove this case from the ledger?</p><div className="flex space-x-3"><button onClick={() => setContainerToDelete(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors">Cancel</button><button onClick={confirmDelete} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">Yes, Delete</button></div></div></div>)}
-      {registrationSuccess && (<div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200"><CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" /><h2 className="text-2xl font-bold text-slate-900 mb-2">Application Submitted!</h2><p className="text-slate-500">Our team will review your profile and contact you shortly.</p></div></div>)}
-      {bookingExpert && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8">{bookingSuccess ? <div className="text-center py-6"><CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4"/><h2 className="text-2xl font-bold text-slate-900 mb-2">Interview Booked!</h2><p className="text-slate-500">Google Meet invite sent to {bookingExpert.name}.</p></div> : <form onSubmit={handleBookExpert}><div className="flex justify-between items-start mb-8"><div><h2 className="text-2xl font-bold text-slate-900">Book Interview</h2><p className="text-slate-500 mt-1">with {bookingExpert.name}</p></div><button type="button" onClick={() => setBookingExpert(null)}><X className="w-5 h-5 text-slate-400"/></button></div><div className="space-y-5"><div><label className="block text-sm font-bold text-slate-700 mb-2">Select Date & Time</label><input type="datetime-local" required className="w-full border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-500 outline-none font-medium" /></div></div><button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl mt-8 transition-colors shadow-lg">Confirm Booking</button></form>}</div></div>}
+      {toastMessage && (<div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300"><div className="bg-white/90 backdrop-blur-sm text-gray-800 px-5 py-3 rounded-xl shadow-lg flex items-center border border-gray-200"><CheckCircle className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" /><p className="font-medium pr-6">{toastMessage}</p><button onClick={() => setToastMessage(null)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-4 h-4" /></button></div></div>)}
+      {containerToRename && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-2xl p-6 animate-in fade-in zoom-in duration-200 shadow-[0_8px_30px_rgba(0,0,0,0.5)]"><div className="flex justify-between items-center mb-6"><h2 className="text-lg font-semibold text-slate-100">Rename Audit Case</h2><button onClick={() => setContainerToRename(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-5 h-5"/></button></div><form onSubmit={confirmRename}><input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none mb-5 font-medium placeholder-slate-500" autoFocus required /><div className="flex space-x-3"><button type="button" onClick={() => setContainerToRename(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button type="submit" className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg transition-all shadow-lg">Save Changes</button></div></form></div></div>)}
+      {fileToRename && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-2xl p-6 animate-in fade-in zoom-in duration-200 shadow-[0_8px_30px_rgba(0,0,0,0.5)]"><div className="flex justify-between items-center mb-6"><h2 className="text-lg font-semibold text-slate-100">Rename File</h2><button onClick={() => setFileToRename(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-5 h-5"/></button></div><form onSubmit={confirmFileRename}><input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none mb-5 font-medium placeholder-slate-500" autoFocus required /><div className="flex space-x-3"><button type="button" onClick={() => setFileToRename(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button type="submit" className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg transition-all shadow-lg">Save</button></div></form></div></div>)}
+      {containerToDelete && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-red-500/30 w-full max-w-md rounded-3xl shadow-[0_8px_30px_rgba(220,38,38,0.2)] p-8 text-center animate-in fade-in zoom-in duration-200"><div className="mx-auto w-16 h-16 bg-red-500/20 shadow-inner rounded-full flex items-center justify-center mb-6"><Trash2 className="w-8 h-8 text-red-400" /></div><h2 className="text-2xl font-bold text-slate-100 mb-2">Delete Audit Case?</h2><p className="text-slate-400 mb-8 font-medium">This action cannot be undone. Are you sure you want to permanently remove this case from the ledger?</p><div className="flex space-x-3"><button onClick={() => setContainerToDelete(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button onClick={confirmDelete} className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl transition-colors shadow-[0_4px_15px_rgba(220,38,38,0.4)]">Yes, Delete</button></div></div></div>)}
+      {registrationSuccess && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] p-8 text-center animate-in fade-in zoom-in duration-200"><CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4" /><h2 className="text-2xl font-bold text-slate-100 mb-2">Application Submitted!</h2><p className="text-slate-400 font-medium">Our team will review your profile and contact you shortly.</p></div></div>)}
+      {bookingExpert && <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.5)]">{bookingSuccess ? <div className="text-center py-6"><CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4"/><h2 className="text-2xl font-bold text-slate-100 mb-2">Interview Booked!</h2><p className="text-slate-400 font-medium">Google Meet invite sent to {bookingExpert.name}.</p></div> : <form onSubmit={handleBookExpert}><div className="flex justify-between items-start mb-8"><div><h2 className="text-2xl font-bold text-slate-100">Book Interview</h2><p className="text-slate-400 mt-1 font-medium">with <span className="text-cyan-400">{bookingExpert.name}</span></p></div><button type="button" onClick={() => setBookingExpert(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5 text-slate-400 hover:text-slate-100"/></button></div><div className="space-y-5"><div><label className="block text-sm font-bold text-slate-300 mb-2">Select Date & Time</label><input type="datetime-local" required className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 outline-none font-medium" style={{ colorScheme: 'dark' }} /></div></div><button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg mt-6 transition-all shadow-lg">Confirm Booking</button></form>}</div></div>}
+      
+      {shareCaseModal && (
+         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-lg rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.5)]">
+               <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-slate-100">Share Audit Case</h2>
+                  <button onClick={() => setShareCaseModal(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-5 h-5"/></button>
+               </div>
+               <div className="mb-4">
+                  <label className="block text-sm font-bold text-slate-300 mb-2">Select Audit Case</label>
+                  <select value={selectedShareCase} onChange={(e) => { setSelectedShareCase(e.target.value); setSelectedShareFiles([]); }} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 outline-none">
+                     <option value="" disabled>Select a case...</option>
+                     {safeContainers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+               </div>
+               
+               {selectedShareCase && (
+                  <div className="mb-4">
+                     <label className="block text-sm font-bold text-slate-300 mb-2">Select Files to Share</label>
+                     <div className="max-h-40 overflow-y-auto space-y-2 bg-slate-950/50 p-3 rounded-lg border border-white/10">
+                        {safeContainers.find(c => c.id === selectedShareCase)?.data?.files.map(f => (
+                           <label key={f.name} className="flex items-center space-x-3 text-slate-200 text-sm cursor-pointer">
+                              <input type="checkbox" checked={selectedShareFiles.includes(f.name)} onChange={(e) => {
+                                 if (e.target.checked) setSelectedShareFiles([...selectedShareFiles, f.name]);
+                                 else setSelectedShareFiles(selectedShareFiles.filter(name => name !== f.name));
+                              }} className="rounded bg-slate-800 border-white/20 text-cyan-500 focus:ring-cyan-500" />
+                              <span>{f.name}</span>
+                           </label>
+                        ))}
+                     </div>
+                  </div>
+               )}
+
+               <div className="mb-6">
+                  <label className="block text-sm font-bold text-slate-300 mb-2">Message to Expert</label>
+                  <textarea value={shareMessage} onChange={(e) => setShareMessage(e.target.value)} placeholder="E.g., Please pay special attention to the timeline in the candidate's experience section." className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 h-24 outline-none resize-none placeholder-slate-500"></textarea>
+               </div>
+
+               <div className="flex space-x-3">
+                  <button onClick={() => setShareCaseModal(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button>
+                  <button onClick={() => {
+                     setMyBookings(prev => prev.map(b => b.id === shareCaseModal.id ? { ...b, status: 'Awaiting Feedback', sharedCaseId: selectedShareCase, sharedFiles: selectedShareFiles, message: shareMessage } : b));
+                     setShareCaseModal(null);
+                     setTimeout(() => {
+                        setMyBookings(prev => prev.map(b => b.id === shareCaseModal.id ? { ...b, status: 'Feedback Received', feedback: { score: 85, comments: 'The timeline inconsistencies noted by the AI were successfully explained by the candidate during the interview. They were working part-time for another agency which caused the overlap. However, the exact technical depth described in their resume seems slightly embellished.', recommendation: 'Proceed with caution. Validate technical skills via a small take-home assignment.' } } : b));
+                        setToastMessage(`Feedback received from ${shareCaseModal.expert.name}`);
+                     }, 8000);
+                  }} disabled={!selectedShareCase || selectedShareFiles.length === 0} className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">Share Case</button>
+               </div>
+            </div>
+         </div>
+      )}
+      
+      {viewFeedbackModal && (
+         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-lg rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.5)]">
+               <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-3">
+                     <div className="p-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-lg">
+                        <CheckCircle className="w-5 h-5 text-white" />
+                     </div>
+                     <h2 className="text-xl font-bold text-slate-100">Expert Feedback Report</h2>
+                  </div>
+                  <button onClick={() => setViewFeedbackModal(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-5 h-5"/></button>
+               </div>
+               
+               <div className="mb-6 bg-slate-950/50 border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-4">
+                     <span className="text-sm font-medium text-slate-400 uppercase tracking-wider">Expert Confidence Score</span>
+                     <span className="text-2xl font-black text-emerald-400">{viewFeedbackModal.feedback.score}%</span>
+                  </div>
+                  <div className="mb-4">
+                     <span className="text-sm font-medium text-slate-400 uppercase tracking-wider block mb-2">Interview Notes</span>
+                     <p className="text-slate-200 text-sm leading-relaxed">{viewFeedbackModal.feedback.comments}</p>
+                  </div>
+                  <div>
+                     <span className="text-sm font-medium text-slate-400 uppercase tracking-wider block mb-2">Recommendation</span>
+                     <p className="text-amber-400 text-sm font-medium bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg">{viewFeedbackModal.feedback.recommendation}</p>
+                  </div>
+               </div>
+
+               <button onClick={() => setViewFeedbackModal(null)} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Close Report</button>
+            </div>
+         </div>
+      )}
     </div>
   );
 }

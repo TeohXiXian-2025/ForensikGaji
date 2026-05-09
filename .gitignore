@@ -49,3 +49,11 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+# AI Assistant Artifacts
+implementation_plan.md
+task.md
+walkthrough.md
+.gemini/
+.antigravity/
+scratch/
+
