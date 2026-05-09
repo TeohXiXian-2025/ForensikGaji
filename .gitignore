@@ -56,4 +56,8 @@ walkthrough.md
 .gemini/
 .antigravity/
 scratch/
+.claude/
+
+# Runtime data
+server/cases.json
 

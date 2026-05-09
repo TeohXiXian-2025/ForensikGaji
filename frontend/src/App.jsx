@@ -1239,8 +1239,8 @@ export default function App() {
       </div>
     </div>
   );
-    </div>
-};
+  };
+
   const renderNewEntryView = () => (
     <div className="p-8 lg:p-12 pb-32 max-w-4xl mx-auto">
       <h1 className="text-3xl font-black text-gray-900 mb-2">Create Audit Case</h1>
