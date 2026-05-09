@@ -1003,14 +1003,14 @@ export default function App() {
         <span className="text-xl font-bold tracking-tight text-gray-900">Forensik<span className="text-cyan-600">Gaji</span></span>
       </div>
       <nav className="flex-1 px-3 space-y-2 mt-6">
-        <button onClick={() => setActiveTab('scanner')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'scanner' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
+        <button onClick={() => { setActiveTab('scanner'); setActiveAuditCase(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'scanner' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
           <Activity className="w-5 h-5" /> <span>Dashboard</span>
         </button>
 
         {/* New Audit Cases Tab with Expandable Type Filters */}
         <div>
           <button
-            onClick={() => setActiveTab(activeTab === 'audit_cases' ? 'scanner' : 'audit_cases')}
+            onClick={() => { setActiveTab(activeTab === 'audit_cases' ? 'scanner' : 'audit_cases'); setActiveAuditCase(null); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'audit_cases' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
           >
             <div className="flex items-center space-x-3">
@@ -1048,18 +1048,18 @@ export default function App() {
           )}
         </div>
 
-        <button onClick={() => setActiveTab('marketplace')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'marketplace' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
+        <button onClick={() => { setActiveTab('marketplace'); setActiveAuditCase(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'marketplace' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
           <Users className="w-5 h-5" /> <span>Expert Marketplace</span>
         </button>
-        <button onClick={() => setActiveTab('register')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'register' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
+        <button onClick={() => { setActiveTab('register'); setActiveAuditCase(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === 'register' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
           <UserPlus className="w-5 h-5" /> <span>Register as Expert</span>
         </button>
       </nav>
       <div className="p-4 mt-auto border-t border-gray-200 space-y-3">
-        <button onClick={() => setActiveTab('new_entry')} className={`w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all ${activeTab === 'new_entry' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' : 'bg-gray-100 text-emerald-600 border border-gray-200 hover:bg-gray-200 hover:shadow-lg'}`}>
+        <button onClick={() => { setActiveTab('new_entry'); setActiveAuditCase(null); }} className={`w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all ${activeTab === 'new_entry' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' : 'bg-gray-100 text-emerald-600 border border-gray-200 hover:bg-gray-200 hover:shadow-lg'}`}>
           <PlusCircle className="w-5 h-5" /> <span>New Entry</span>
         </button>
-        <button onClick={() => setActiveTab('landing')} className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all bg-transparent text-gray-500 border border-transparent hover:border-red-500/30 hover:bg-red-50 hover:text-red-500">
+        <button onClick={() => { setActiveTab('landing'); setActiveAuditCase(null); }} className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 rounded-xl font-medium transition-all bg-transparent text-gray-500 border border-transparent hover:border-red-500/30 hover:bg-red-50 hover:text-red-500">
           <LogOut className="w-5 h-5" /> <span>Log Out</span>
         </button>
       </div>
@@ -2009,42 +2009,42 @@ export default function App() {
     if (!selectedExpertDetail) return null;
     const expert = selectedExpertDetail;
     return (
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4">
-        <div className="bg-slate-900/50 border border-white/10 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 shadow-[0_8px_40px_rgba(0,0,0,0.5)]">
-          <div className="p-5 border-b border-white/10 flex justify-between items-center bg-slate-950/80">
-            <h2 className="text-lg font-semibold text-slate-100">Expert Profile</h2>
-            <button onClick={() => setSelectedExpertDetail(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-4 h-4"/></button>
+      <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
+          <div className="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h2 className="text-lg font-semibold text-gray-900">Expert Profile</h2>
+            <button onClick={() => setSelectedExpertDetail(null)} className="p-2 hover:bg-gray-200 rounded-full text-gray-500 hover:text-gray-900 transition-colors"><X className="w-4 h-4"/></button>
           </div>
           <div className="p-6 overflow-y-auto flex-1">
             <div className="flex flex-col md:flex-row items-start md:gap-5 mb-6">
-              <img src={expert.image} alt={expert.name} className="w-16 h-16 rounded-full border-2 border-slate-700 object-cover mb-3 md:mb-0 shadow-lg" />
+              <img src={expert.image} alt={expert.name} className="w-16 h-16 rounded-full border-2 border-gray-300 object-cover mb-3 md:mb-0 shadow-lg" />
               <div className="flex-1">
-                <h1 className="text-xl font-semibold text-slate-100">{expert.name}</h1>
-                <p className="text-cyan-400 text-sm font-medium">{expert.role} @ {expert.company}</p>
+                <h1 className="text-xl font-semibold text-gray-900">{expert.name}</h1>
+                <p className="text-cyan-600 text-sm font-medium">{expert.role} @ {expert.company}</p>
                 <div className="flex items-center text-sm mt-2">
                   <Star className="w-4 h-4 text-amber-400 fill-amber-400 mr-1" />
-                  <span className="font-medium text-slate-200 mr-1">{expert.rating}</span>
-                  <span className="text-slate-500">({expert.reviews} reviews)</span>
+                  <span className="font-medium text-gray-700 mr-1">{expert.rating}</span>
+                  <span className="text-gray-500">({expert.reviews} reviews)</span>
                 </div>
               </div>
               <div className="mt-4 md:mt-0 w-full md:w-auto">
-                <button onClick={() => { setSelectedExpertDetail(null); setBookingExpert(expert); }} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)]">Book ({expert.rate})</button>
+                <button onClick={() => { setSelectedExpertDetail(null); setBookingExpert(expert); }} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-all shadow-md">Book ({expert.rate})</button>
               </div>
             </div>
             <div className="mb-6">
-              <h3 className="text-sm font-semibold text-slate-200 mb-2 pb-2 border-b border-white/10">About</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{expert.bio}</p>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2 pb-2 border-b border-gray-200">About</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">{expert.bio}</p>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-200 mb-3 pb-2 border-b border-white/10 flex items-center"><MessageSquare className="w-4 h-4 mr-2 text-cyan-400" /> Reviews</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-200 flex items-center"><MessageSquare className="w-4 h-4 mr-2 text-cyan-600" /> Reviews</h3>
               <div className="space-y-3">
                 {expert.reviewList.map((r, i) => (
-                  <div key={i} className="bg-slate-950/50 p-4 rounded-xl border border-white/10 shadow-inner">
+                  <div key={i} className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-inner">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm text-slate-200">{r.author}</span>
+                      <span className="font-medium text-sm text-gray-700">{r.author}</span>
                       <div className="flex">{[...Array(r.rating)].map((_, j) => <Star key={j} className="w-3 h-3 text-amber-400 fill-amber-400" />)}</div>
                     </div>
-                    <p className="text-sm text-slate-400">"{r.text}"</p>
+                    <p className="text-sm text-gray-600">"{r.text}"</p>
                   </div>
                 ))}
               </div>
@@ -2093,7 +2093,7 @@ export default function App() {
         title: 'Enterprise-Grade Security',
         desc: 'End-to-end encryption, GDPR compliance, and SOC 2 Type II certified infrastructure. Your data never leaves secure environments.',
         color: 'from-emerald-500/20 to-teal-500/20',
-        iconColor: 'text-emerald-400',
+        iconColor: 'text-emerald-500',
         borderColor: 'border-emerald-500/20'
       },
       {
@@ -2109,7 +2109,7 @@ export default function App() {
         title: 'Comprehensive Reporting',
         desc: 'Generate detailed forensic audit reports with evidence, heatmaps, and risk scores. Export as PDF for compliance and documentation.',
         color: 'from-cyan-500/20 to-blue-500/20',
-        iconColor: 'text-cyan-400',
+        iconColor: 'text-cyan-600',
         borderColor: 'border-cyan-500/20'
       }
     ];
@@ -2168,16 +2168,16 @@ export default function App() {
                 <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-2 rounded-xl shadow-lg shadow-cyan-500/20">
                   <Shield className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold text-white">Forensik<span className="text-cyan-400">Gaji</span></span>
+                <span className="text-xl font-bold text-white">Forensik<span className="text-cyan-600">Gaji</span></span>
               </div>
               <div className="hidden md:flex items-center space-x-8">
-                <button onClick={() => document.getElementById('features-section')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">Features</button>
-                <button onClick={() => document.getElementById('how-it-works')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">How It Works</button>
-                <button onClick={() => document.getElementById('pricing')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">Pricing</button>
-                <button onClick={() => document.getElementById('faq')?.scrollIntoView({behavior: 'smooth'})} className="text-slate-400 hover:text-white text-sm font-medium transition-colors">FAQ</button>
+                <button onClick={() => document.getElementById('features-section')?.scrollIntoView({behavior: 'smooth'})} className="text-gray-600 hover:text-white text-sm font-medium transition-colors">Features</button>
+                <button onClick={() => document.getElementById('how-it-works')?.scrollIntoView({behavior: 'smooth'})} className="text-gray-600 hover:text-white text-sm font-medium transition-colors">How It Works</button>
+                <button onClick={() => document.getElementById('pricing')?.scrollIntoView({behavior: 'smooth'})} className="text-gray-600 hover:text-white text-sm font-medium transition-colors">Pricing</button>
+                <button onClick={() => document.getElementById('faq')?.scrollIntoView({behavior: 'smooth'})} className="text-gray-600 hover:text-white text-sm font-medium transition-colors">FAQ</button>
               </div>
               <div className="flex items-center space-x-4">
-                <button onClick={() => setActiveTab('new_entry')} className="hidden sm:block text-slate-400 hover:text-white text-sm font-medium transition-colors">Sign In</button>
+                <button onClick={() => setActiveTab('new_entry')} className="hidden sm:block text-gray-600 hover:text-white text-sm font-medium transition-colors">Sign In</button>
                 <button onClick={() => setActiveTab('new_entry')} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-cyan-500/25 transition-all">
                   Start Free Trial
                 </button>
@@ -2204,7 +2204,7 @@ export default function App() {
               </h1>
 
               {/* Subheadline */}
-              <p className="text-lg sm:text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+              <p className="text-lg sm:text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
                 Detect document tampering in seconds with enterprise-grade AI. ELA heatmaps, claim extraction, and expert verification—all in one platform.
               </p>
 
@@ -2219,7 +2219,7 @@ export default function App() {
                 </button>
                 <a
                   href="https://youtu.be/2ju8OihCAEc" target="_blank" rel="noopener noreferrer"
-                  className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-white px-8 py-4 rounded-xl text-base font-medium transition-all flex items-center justify-center"
+                  className="bg-gray-100/50 hover:bg-gray-100 border border-slate-700 text-white px-8 py-4 rounded-xl text-base font-medium transition-all flex items-center justify-center"
                 >
                   <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center mr-3">
                     <Play className="w-4 h-4 text-white ml-0.5" />
@@ -2229,7 +2229,7 @@ export default function App() {
               </div>
 
               {/* Trust badges */}
-              <div className="flex flex-wrap items-center justify-center gap-8 text-slate-500 text-sm">
+              <div className="flex flex-wrap items-center justify-center gap-8 text-gray-500 text-sm">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-emerald-500" />
                   <span>No credit card required</span>
@@ -2250,7 +2250,7 @@ export default function App() {
               {stats.map((stat, i) => (
                 <div key={i} className="text-center">
                   <div className="text-3xl sm:text-4xl font-bold text-white mb-1">{stat.value}</div>
-                  <div className="text-sm text-slate-400">{stat.label}</div>
+                  <div className="text-sm text-gray-600">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -2260,10 +2260,10 @@ export default function App() {
         {/* Logos Section */}
         <section className="py-12 border-y border-white/5 bg-slate-900/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-sm text-slate-500 mb-8">TRUSTED BY LEADING COMPANIES</p>
+            <p className="text-center text-sm text-gray-500 mb-8">TRUSTED BY LEADING COMPANIES</p>
             <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 opacity-50">
               {['TechVentures', 'FinTech MY', 'StartupX', 'CloudSec', 'DataCorp'].map((company, i) => (
-                <span key={i} className="text-xl font-bold text-slate-400">{company}</span>
+                <span key={i} className="text-xl font-bold text-gray-600">{company}</span>
               ))}
             </div>
           </div>
@@ -2274,24 +2274,24 @@ export default function App() {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <div className="inline-block bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-4 py-2 mb-4">
-                <span className="text-cyan-400 text-sm font-semibold">FEATURES</span>
+                <span className="text-cyan-600 text-sm font-semibold">FEATURES</span>
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 Enterprise-Grade Document Forensics
               </h2>
-              <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Powerful AI tools to detect fraud, verify claims, and streamline your hiring process
               </p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {features.map((feature, i) => (
-                <div key={i} className="group bg-slate-900/50 border border-white/5 hover:border-white/10 rounded-2xl p-6 transition-all hover:bg-slate-900/80">
+                <div key={i} className="group bg-slate-900/50 border border-white/5 hover:border-gray-200 rounded-2xl p-6 transition-all hover:bg-slate-900/80">
                   <div className={`bg-gradient-to-br ${feature.color} w-14 h-14 rounded-xl flex items-center justify-center border ${feature.borderColor} mb-5`}>
                     <span className={feature.iconColor}>{feature.icon}</span>
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
-                  <p className="text-slate-400 leading-relaxed">{feature.desc}</p>
+                  <p className="text-gray-600 leading-relaxed">{feature.desc}</p>
                 </div>
               ))}
             </div>
@@ -2308,7 +2308,7 @@ export default function App() {
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 Verify Documents in 3 Simple Steps
               </h2>
-              <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 No technical expertise required. Get started in minutes.
               </p>
             </div>
@@ -2341,14 +2341,14 @@ export default function App() {
                   <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-8 h-full">
                     <div className="text-7xl font-black text-slate-800 absolute -top-4 -left-2">{step.step}</div>
                     <div className="relative z-10">
-                      <div className="bg-gradient-to-br from-cyan-500/20 to-blue-500/20 w-16 h-16 rounded-2xl flex items-center justify-center border border-cyan-500/20 mb-6 text-cyan-400">
+                      <div className="bg-gradient-to-br from-cyan-500/20 to-blue-500/20 w-16 h-16 rounded-2xl flex items-center justify-center border border-cyan-500/20 mb-6 text-cyan-600">
                         {step.icon}
                       </div>
                       <h3 className="text-xl font-semibold text-white mb-3">{step.title}</h3>
-                      <p className="text-slate-400 mb-6">{step.desc}</p>
+                      <p className="text-gray-600 mb-6">{step.desc}</p>
                       <ul className="space-y-2">
                         {step.details.map((detail, j) => (
-                          <li key={j} className="flex items-center text-sm text-slate-500">
+                          <li key={j} className="flex items-center text-sm text-gray-500">
                             <CheckCircle className="w-4 h-4 text-cyan-500 mr-2" />
                             {detail}
                           </li>
@@ -2383,12 +2383,12 @@ export default function App() {
                       <Star key={j} className="w-5 h-5 text-amber-400 fill-amber-400" />
                     ))}
                   </div>
-                  <p className="text-slate-300 mb-6 leading-relaxed">"{testimonial.quote}"</p>
+                  <p className="text-gray-700 mb-6 leading-relaxed">"{testimonial.quote}"</p>
                   <div className="flex items-center">
                     <img src={testimonial.avatar} alt={testimonial.author} className="w-12 h-12 rounded-full object-cover mr-4" />
                     <div>
                       <div className="text-white font-semibold">{testimonial.author}</div>
-                      <div className="text-slate-500 text-sm">{testimonial.role}</div>
+                      <div className="text-gray-500 text-sm">{testimonial.role}</div>
                     </div>
                   </div>
                 </div>
@@ -2402,12 +2402,12 @@ export default function App() {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <div className="inline-block bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2 mb-4">
-                <span className="text-emerald-400 text-sm font-semibold">PRICING</span>
+                <span className="text-emerald-500 text-sm font-semibold">PRICING</span>
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 Simple, Transparent Pricing
               </h2>
-              <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Start free, upgrade when you need more. No hidden fees.
               </p>
             </div>
@@ -2451,26 +2451,26 @@ export default function App() {
                   <div className={`bg-slate-900/50 border rounded-2xl p-8 h-full ${plan.popular ? 'border-cyan-500/50 shadow-lg shadow-cyan-500/10' : 'border-white/5'}`}>
                     <div className="mb-6">
                       <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                      <p className="text-slate-400 text-sm">{plan.description}</p>
+                      <p className="text-gray-600 text-sm">{plan.description}</p>
                     </div>
                     <div className="mb-6">
                       <span className="text-4xl font-bold text-white">{plan.price}</span>
-                      <span className="text-slate-400">{plan.period}</span>
+                      <span className="text-gray-600">{plan.period}</span>
                     </div>
                     <button
                       onClick={() => setActiveTab('new_entry')}
                       className={`w-full py-3 rounded-xl font-semibold mb-6 transition-all ${
                         plan.popular
                           ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25 hover:from-cyan-400 hover:to-blue-500'
-                          : 'bg-slate-800 text-white hover:bg-slate-700 border border-slate-700'
+                          : 'bg-gray-100 text-white hover:bg-gray-200 border border-slate-700'
                       }`}
                     >
                       {plan.cta}
                     </button>
                     <ul className="space-y-3">
                       {plan.features.map((feature, j) => (
-                        <li key={j} className="flex items-start text-sm text-slate-300">
-                          <CheckCircle className={`w-5 h-5 mr-3 flex-shrink-0 ${plan.popular ? 'text-cyan-400' : 'text-slate-500'}`} />
+                        <li key={j} className="flex items-start text-sm text-gray-700">
+                          <CheckCircle className={`w-5 h-5 mr-3 flex-shrink-0 ${plan.popular ? 'text-cyan-600' : 'text-gray-500'}`} />
                           {feature}
                         </li>
                       ))}
@@ -2499,9 +2499,9 @@ export default function App() {
                 <details key={i} className="group bg-slate-900/50 border border-white/5 rounded-xl overflow-hidden">
                   <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-900/80 transition-colors">
                     <span className="text-white font-semibold pr-4">{faq.q}</span>
-                    <ChevronRight className="w-5 h-5 text-slate-500 group-open:rotate-90 transition-transform flex-shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-gray-500 group-open:rotate-90 transition-transform flex-shrink-0" />
                   </summary>
-                  <div className="px-6 pb-6 text-slate-400 leading-relaxed border-t border-white/5 pt-4">
+                  <div className="px-6 pb-6 text-gray-600 leading-relaxed border-t border-white/5 pt-4">
                     {faq.a}
                   </div>
                 </details>
@@ -2519,9 +2519,9 @@ export default function App() {
                   <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-2 rounded-xl">
                     <Shield className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-xl font-bold text-white">Forensik<span className="text-cyan-400">Gaji</span></span>
+                  <span className="text-xl font-bold text-white">Forensik<span className="text-cyan-600">Gaji</span></span>
                 </div>
-                <p className="text-slate-400 text-sm mb-6 max-w-xs">
+                <p className="text-gray-600 text-sm mb-6 max-w-xs">
                   Enterprise-grade AI forensics for HR document verification. Stop fraud, hire with confidence.
                 </p>
               </div>
@@ -2535,7 +2535,7 @@ export default function App() {
                   <ul className="space-y-3">
                     {col.links.map((link, j) => (
                       <li key={j}>
-                        <button className="text-slate-400 hover:text-white text-sm transition-colors">{link}</button>
+                        <button className="text-gray-600 hover:text-white text-sm transition-colors">{link}</button>
                       </li>
                     ))}
                   </ul>
@@ -2543,8 +2543,8 @@ export default function App() {
               ))}
             </div>
             <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-slate-500 text-sm">© 2025 ForensikGaji. All rights reserved.</p>
-              <div className="flex space-x-6 text-sm text-slate-400">
+              <p className="text-gray-500 text-sm">© 2025 ForensikGaji. All rights reserved.</p>
+              <div className="flex space-x-6 text-sm text-gray-600">
                 <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
                 <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
                 <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
@@ -2589,22 +2589,22 @@ export default function App() {
       {renderSplitScreenModal()}
       {renderExpertDetailModal()}
       {toastMessage && (<div className="fixed top-6 right-6 z-[60] animate-in slide-in-from-right fade-in duration-300"><div className="bg-white/90 backdrop-blur-sm text-gray-800 px-5 py-3 rounded-xl shadow-lg flex items-center border border-gray-200"><CheckCircle className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" /><p className="font-medium pr-6">{toastMessage}</p><button onClick={() => setToastMessage(null)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-4 h-4" /></button></div></div>)}
-      {containerToRename && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-2xl p-6 animate-in fade-in zoom-in duration-200 shadow-[0_8px_30px_rgba(0,0,0,0.5)]"><div className="flex justify-between items-center mb-6"><h2 className="text-lg font-semibold text-slate-100">Rename Audit Case</h2><button onClick={() => setContainerToRename(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-5 h-5"/></button></div><form onSubmit={confirmRename}><input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none mb-5 font-medium placeholder-slate-500" autoFocus required /><div className="flex space-x-3"><button type="button" onClick={() => setContainerToRename(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button type="submit" className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg transition-all shadow-lg">Save Changes</button></div></form></div></div>)}
-      {fileToRename && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-2xl p-6 animate-in fade-in zoom-in duration-200 shadow-[0_8px_30px_rgba(0,0,0,0.5)]"><div className="flex justify-between items-center mb-6"><h2 className="text-lg font-semibold text-slate-100">Rename File</h2><button onClick={() => setFileToRename(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-5 h-5"/></button></div><form onSubmit={confirmFileRename}><input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none mb-5 font-medium placeholder-slate-500" autoFocus required /><div className="flex space-x-3"><button type="button" onClick={() => setFileToRename(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button type="submit" className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg transition-all shadow-lg">Save</button></div></form></div></div>)}
-      {containerToDelete && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-red-500/30 w-full max-w-md rounded-3xl shadow-[0_8px_30px_rgba(220,38,38,0.2)] p-8 text-center animate-in fade-in zoom-in duration-200"><div className="mx-auto w-16 h-16 bg-red-500/20 shadow-inner rounded-full flex items-center justify-center mb-6"><Trash2 className="w-8 h-8 text-red-400" /></div><h2 className="text-2xl font-bold text-slate-100 mb-2">Delete Audit Case?</h2><p className="text-slate-400 mb-8 font-medium">This action cannot be undone. Are you sure you want to permanently remove this case from the ledger?</p><div className="flex space-x-3"><button onClick={() => setContainerToDelete(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button onClick={confirmDelete} className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl transition-colors shadow-[0_4px_15px_rgba(220,38,38,0.4)]">Yes, Delete</button></div></div></div>)}
-      {registrationSuccess && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] p-8 text-center animate-in fade-in zoom-in duration-200"><CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4" /><h2 className="text-2xl font-bold text-slate-100 mb-2">Application Submitted!</h2><p className="text-slate-400 font-medium">Our team will review your profile and contact you shortly.</p></div></div>)}
-      {bookingExpert && <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.5)]">{bookingSuccess ? <div className="text-center py-6"><CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4"/><h2 className="text-2xl font-bold text-slate-100 mb-2">Interview Booked!</h2><p className="text-slate-400 font-medium">Google Meet invite sent to {bookingExpert.name}.</p></div> : <form onSubmit={handleBookExpert}><div className="flex justify-between items-start mb-8"><div><h2 className="text-2xl font-bold text-slate-100">Book Interview</h2><p className="text-slate-400 mt-1 font-medium">with <span className="text-cyan-400">{bookingExpert.name}</span></p></div><button type="button" onClick={() => setBookingExpert(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5 text-slate-400 hover:text-slate-100"/></button></div><div className="space-y-5"><div><label className="block text-sm font-bold text-slate-300 mb-2">Select Date & Time</label><input type="datetime-local" required className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 outline-none font-medium" style={{ colorScheme: 'dark' }} /></div></div><button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg mt-6 transition-all shadow-lg">Confirm Booking</button></form>}</div></div>}
+      {containerToRename && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-gray-200 w-full max-w-md rounded-2xl p-6 animate-in fade-in zoom-in duration-200 shadow-[0_8px_30px_rgba(0,0,0,0.5)]"><div className="flex justify-between items-center mb-6"><h2 className="text-lg font-semibold text-gray-900">Rename Audit Case</h2><button onClick={() => setContainerToRename(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-600 hover:text-gray-900 transition-colors"><X className="w-5 h-5"/></button></div><form onSubmit={confirmRename}><input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="w-full bg-gray-50 shadow-inner border border-gray-200 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none mb-5 font-medium placeholder-gray-400" autoFocus required /><div className="flex space-x-3"><button type="button" onClick={() => setContainerToRename(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button type="submit" className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg transition-all shadow-lg">Save Changes</button></div></form></div></div>)}
+      {fileToRename && (<div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-slate-900/50 backdrop-blur-2xl border border-gray-200 w-full max-w-md rounded-2xl p-6 animate-in fade-in zoom-in duration-200 shadow-[0_8px_30px_rgba(0,0,0,0.5)]"><div className="flex justify-between items-center mb-6"><h2 className="text-lg font-semibold text-gray-900">Rename File</h2><button onClick={() => setFileToRename(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-600 hover:text-gray-900 transition-colors"><X className="w-5 h-5"/></button></div><form onSubmit={confirmFileRename}><input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="w-full bg-gray-50 shadow-inner border border-gray-200 text-gray-900 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none mb-5 font-medium placeholder-gray-400" autoFocus required /><div className="flex space-x-3"><button type="button" onClick={() => setFileToRename(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button type="submit" className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg transition-all shadow-lg">Save</button></div></form></div></div>)}
+      {containerToDelete && (<div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-white border border-red-200 w-full max-w-md rounded-3xl shadow-lg p-8 text-center animate-in fade-in zoom-in duration-200"><div className="mx-auto w-16 h-16 bg-red-500/20 shadow-inner rounded-full flex items-center justify-center mb-6"><Trash2 className="w-8 h-8 text-red-400" /></div><h2 className="text-2xl font-bold text-gray-900 mb-2">Delete Audit Case?</h2><p className="text-gray-600 mb-8 font-medium">This action cannot be undone. Are you sure you want to permanently remove this case from the ledger?</p><div className="flex space-x-3"><button onClick={() => setContainerToDelete(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button><button onClick={confirmDelete} className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl transition-colors shadow-[0_4px_15px_rgba(220,38,38,0.4)]">Yes, Delete</button></div></div></div>)}
+      {registrationSuccess && (<div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-white border border-gray-200 w-full max-w-md rounded-3xl shadow-lg p-8 text-center animate-in fade-in zoom-in duration-200"><CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" /><h2 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted!</h2><p className="text-gray-600 font-medium">Our team will review your profile and contact you shortly.</p></div></div>)}
+      {bookingExpert && <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4"><div className="bg-white border border-gray-200 w-full max-w-md rounded-2xl p-6 shadow-lg">{bookingSuccess ? <div className="text-center py-6"><CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4"/><h2 className="text-2xl font-bold text-gray-900 mb-2">Interview Booked!</h2><p className="text-gray-600 font-medium">Google Meet invite sent to {bookingExpert.name}.</p></div> : <form onSubmit={handleBookExpert}><div className="flex justify-between items-start mb-8"><div><h2 className="text-2xl font-bold text-gray-900">Book Interview</h2><p className="text-gray-600 mt-1 font-medium">with <span className="text-cyan-600">{bookingExpert.name}</span></p></div><button type="button" onClick={() => setBookingExpert(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-600 hover:text-gray-900"/></button></div><div className="space-y-5"><div><label className="block text-sm font-bold text-gray-700 mb-2">Select Date & Time</label><input type="datetime-local" required className="w-full bg-gray-50 shadow-inner border border-gray-200 text-gray-900 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 outline-none font-medium" style={{ colorScheme: 'dark' }} /></div></div><button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg mt-6 transition-all shadow-lg">Confirm Booking</button></form>}</div></div>}
       
       {shareCaseModal && (
-         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-lg rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.5)]">
+         <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-gray-200 w-full max-w-lg rounded-2xl p-6 shadow-lg">
                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-slate-100">Share Audit Case</h2>
-                  <button onClick={() => setShareCaseModal(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-5 h-5"/></button>
+                  <h2 className="text-xl font-bold text-gray-900">Share Audit Case</h2>
+                  <button onClick={() => setShareCaseModal(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-600 hover:text-gray-900 transition-colors"><X className="w-5 h-5"/></button>
                </div>
                <div className="mb-4">
-                  <label className="block text-sm font-bold text-slate-300 mb-2">Select Audit Case</label>
-                  <select value={selectedShareCase} onChange={(e) => { setSelectedShareCase(e.target.value); setSelectedShareFiles([]); }} className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 outline-none">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Select Audit Case</label>
+                  <select value={selectedShareCase} onChange={(e) => { setSelectedShareCase(e.target.value); setSelectedShareFiles([]); }} className="w-full bg-gray-50 shadow-inner border border-gray-200 text-gray-900 rounded-lg p-3 outline-none">
                      <option value="" disabled>Select a case...</option>
                      {safeContainers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -2612,14 +2612,14 @@ export default function App() {
                
                {selectedShareCase && (
                   <div className="mb-4">
-                     <label className="block text-sm font-bold text-slate-300 mb-2">Select Files to Share</label>
-                     <div className="max-h-40 overflow-y-auto space-y-2 bg-slate-950/50 p-3 rounded-lg border border-white/10">
+                     <label className="block text-sm font-bold text-gray-700 mb-2">Select Files to Share</label>
+                     <div className="max-h-40 overflow-y-auto space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
                         {safeContainers.find(c => c.id === selectedShareCase)?.data?.files.map(f => (
                            <label key={f.name} className="flex items-center space-x-3 text-slate-200 text-sm cursor-pointer">
                               <input type="checkbox" checked={selectedShareFiles.includes(f.name)} onChange={(e) => {
                                  if (e.target.checked) setSelectedShareFiles([...selectedShareFiles, f.name]);
                                  else setSelectedShareFiles(selectedShareFiles.filter(name => name !== f.name));
-                              }} className="rounded bg-slate-800 border-white/20 text-cyan-500 focus:ring-cyan-500" />
+                              }} className="rounded bg-gray-100 border-white/20 text-cyan-500 focus:ring-cyan-500" />
                               <span>{f.name}</span>
                            </label>
                         ))}
@@ -2628,12 +2628,12 @@ export default function App() {
                )}
 
                <div className="mb-6">
-                  <label className="block text-sm font-bold text-slate-300 mb-2">Message to Expert</label>
-                  <textarea value={shareMessage} onChange={(e) => setShareMessage(e.target.value)} placeholder="E.g., Please pay special attention to the timeline in the candidate's experience section." className="w-full bg-slate-950/50 shadow-inner border border-white/10 text-slate-100 rounded-lg p-3 h-24 outline-none resize-none placeholder-slate-500"></textarea>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Message to Expert</label>
+                  <textarea value={shareMessage} onChange={(e) => setShareMessage(e.target.value)} placeholder="E.g., Please pay special attention to the timeline in the candidate's experience section." className="w-full bg-gray-50 shadow-inner border border-gray-200 text-gray-900 rounded-lg p-3 h-24 outline-none resize-none placeholder-gray-400"></textarea>
                </div>
 
                <div className="flex space-x-3">
-                  <button onClick={() => setShareCaseModal(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button>
+                  <button onClick={() => setShareCaseModal(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-lg transition-colors shadow-inner">Cancel</button>
                   <button onClick={() => {
                      setMyBookings(prev => prev.map(b => b.id === shareCaseModal.id ? { ...b, status: 'Awaiting Feedback', sharedCaseId: selectedShareCase, sharedFiles: selectedShareFiles, message: shareMessage } : b));
                      setShareCaseModal(null);
@@ -2649,33 +2649,33 @@ export default function App() {
       
       {viewFeedbackModal && (
          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 w-full max-w-lg rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.5)]">
+            <div className="bg-white border border-gray-200 w-full max-w-lg rounded-2xl p-6 shadow-lg">
                <div className="flex justify-between items-center mb-6">
                   <div className="flex items-center gap-3">
                      <div className="p-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-lg">
                         <CheckCircle className="w-5 h-5 text-white" />
                      </div>
-                     <h2 className="text-xl font-bold text-slate-100">Expert Feedback Report</h2>
+                     <h2 className="text-xl font-bold text-gray-900">Expert Feedback Report</h2>
                   </div>
-                  <button onClick={() => setViewFeedbackModal(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-slate-100 transition-colors"><X className="w-5 h-5"/></button>
+                  <button onClick={() => setViewFeedbackModal(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-600 hover:text-gray-900 transition-colors"><X className="w-5 h-5"/></button>
                </div>
                
-               <div className="mb-6 bg-slate-950/50 border border-white/10 rounded-xl p-4">
+               <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-4">
-                     <span className="text-sm font-medium text-slate-400 uppercase tracking-wider">Expert Confidence Score</span>
-                     <span className="text-2xl font-black text-emerald-400">{viewFeedbackModal.feedback.score}%</span>
+                     <span className="text-sm font-medium text-gray-600 uppercase tracking-wider">Expert Confidence Score</span>
+                     <span className="text-2xl font-black text-emerald-500">{viewFeedbackModal.feedback.score}%</span>
                   </div>
                   <div className="mb-4">
-                     <span className="text-sm font-medium text-slate-400 uppercase tracking-wider block mb-2">Interview Notes</span>
+                     <span className="text-sm font-medium text-gray-600 uppercase tracking-wider block mb-2">Interview Notes</span>
                      <p className="text-slate-200 text-sm leading-relaxed">{viewFeedbackModal.feedback.comments}</p>
                   </div>
                   <div>
-                     <span className="text-sm font-medium text-slate-400 uppercase tracking-wider block mb-2">Recommendation</span>
+                     <span className="text-sm font-medium text-gray-600 uppercase tracking-wider block mb-2">Recommendation</span>
                      <p className="text-amber-400 text-sm font-medium bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg">{viewFeedbackModal.feedback.recommendation}</p>
                   </div>
                </div>
 
-               <button onClick={() => setViewFeedbackModal(null)} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-lg transition-colors shadow-inner">Close Report</button>
+               <button onClick={() => setViewFeedbackModal(null)} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-lg transition-colors shadow-inner">Close Report</button>
             </div>
          </div>
       )}
