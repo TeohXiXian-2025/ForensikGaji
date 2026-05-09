@@ -224,6 +224,10 @@ export default function App() {
   // Audit cases view state
   const [caseSearch, setCaseSearch] = useState('');
   const [caseSortBy, setCaseSortBy] = useState('newest');
+  // Audit case detail view state
+  const [fileSearch, setFileSearch] = useState('');
+  const [fileSortBy, setFileSortBy] = useState('risk_high');
+
 
   
   const [containers, setContainers] = useState(() => {
@@ -1795,9 +1799,6 @@ export default function App() {
     if (!activeAuditCase) return null;
     const c = activeAuditCase;
 
-    // Local state for search and sort
-    const [fileSearch, setFileSearch] = useState('');
-    const [fileSortBy, setFileSortBy] = useState('risk_high');
 
     const allFiles = Array.isArray(c.data?.files) ? c.data.files : [];
 
