@@ -20,6 +20,7 @@
 - [Technology Stack](#technology-stack)
 - [Installation & Setup](#installation--setup)
 - [Environment Variables](#environment-variables)
+- [Firebase/Firestore Setup](#firebasefirestore-setup)
 - [API Documentation](#api-documentation)
 - [Development](#development)
 - [Deployment](#deployment)
@@ -59,10 +60,11 @@ ForensikGaji leverages multi-layered forensic analysis combining computer vision
 | **Executive Risk Dashboard** | Real-time analytics showing risk distribution (Authentic vs. Critical) across talent pipeline |
 | **Hybrid Ingestion Methods** | Secure "Audit Links" for candidates + "Direct HR Uploads" for immediate batch processing |
 | **Expert Marketplace Integration** | Vetted ecosystem of technical leads—book experts directly from high-risk audit cases |
+| **Firestore Data Persistence** | Cloud-native database storage for audit cases with real-time sync |
 
 ### User Interface
 
-- **Premium Minimalist Glass Design** — Modern, accessible interface with glassmorphism tokens
+- **Premium Minimalist Design** — Modern, accessible interface with light theme
 - **Real-time Document Overlay** — Visual annotation of flagged claims directly on documents
 - **Multi-tab SPA Architecture** — Dashboard, Marketplace, Registration, and Candidate Portal
 - **Cross-tab State Synchronization** — BroadcastChannel for seamless multi-window workflows
@@ -84,6 +86,12 @@ ForensikGaji leverages multi-layered forensic analysis combining computer vision
                         ┌─────────────────┐
                         │   Gemini 2.5    │
                         │   Flash AI      │
+                        └─────────────────┘
+                                │
+                                ▼
+                        ┌─────────────────┐
+                        │   Firebase      │
+                        │   Firestore     │
                         └─────────────────┘
 ```
 
@@ -132,6 +140,7 @@ ForensikGaji/
 ├── frontend/                    # React + Vite Frontend Application
 │   ├── src/
 │   │   ├── App.jsx              # Main SPA with routing & state management
+│   │   ├── apiService.js        # API client for backend communication
 │   │   ├── constants.js         # Expert marketplace mock data
 │   │   ├── main.jsx             # React entry point
 │   │   ├── index.css            # Global styles & Tailwind config
@@ -144,12 +153,15 @@ ForensikGaji/
 │   ├── main.py                  # API entry point & endpoints
 │   ├── models.py                # Pydantic request/response models
 │   ├── requirements.txt         # Python dependencies
+│   ├── .env.example             # Environment variables template
 │   ├── services/                # Business logic layer
 │   │   ├── doc_ai.py            # Google Cloud Document AI integration
 │   │   ├── ela_vision.py        # ELA heatmap generation
 │   │   ├── fraud_engine.py      # Metadata & semantic analysis
 │   │   ├── gemini_agent.py      # Gemini AI reasoning layer
 │   │   ├── storage.py           # GCS upload logic
+│   │   ├── firestore_storage.py # Firestore database operations
+│   │   ├── case_storage.py      # JSON fallback storage
 │   │   └── workspace.py         # Google Workspace integration (mock)
 │   └── Dockerfile               # Backend container build config
 │
@@ -179,6 +191,7 @@ ForensikGaji/
 | PyMuPDF | 1.27.2.2 | PDF Processing |
 | OpenCV | 4.13.0 | Computer Vision |
 | PyWavelets | 1.4.1+ | Wavelet Decomposition |
+| Firebase Admin | 6.5.0 | Firestore Integration |
 
 ### Google Cloud Services
 | Service | Purpose |
@@ -187,6 +200,7 @@ ForensikGaji/
 | Cloud Storage | Document Buffering & Storage |
 | Document AI | OCR Text Extraction |
 | Vertex AI | Gemini 2.5 Flash Integration |
+| Firebase Firestore | Audit Case Persistence |
 | Secret Manager | Secure Credential Management (Production) |
 
 ---
@@ -199,6 +213,7 @@ ForensikGaji/
 - **Python** (3.10 or higher)
 - **Docker** (for containerized deployment)
 - **Google Cloud Project** with billing enabled
+- **Firebase Project** with Firestore enabled
 - **Google Gemini API Key**
 
 ---
@@ -218,11 +233,22 @@ ForensikGaji/
 3. **Configure environment variables:**
    Create a `.env` file in the `server` directory:
    ```env
+   # Gemini AI
    GEMINI_API_KEY=your_gemini_api_key_here
-   DOC_AI_PROJECT_ID=your_gcp_project_id
+
+   # Google Cloud Storage
+   GCS_BUCKET_NAME=forensikgaji-uploads
+
+   # Document AI Configuration
+   DOC_AI_PROJECT_ID=forensikgaji-core-493210
    DOC_AI_LOCATION=asia-southeast1
    DOC_AI_PROCESSOR_ID=your_doc_ai_processor_id
-   GCS_BUCKET_NAME=your_cloud_storage_bucket_name
+
+   # Firebase Firestore (Optional - falls back to JSON if not set)
+   FIREBASE_PROJECT_ID=forensikgaji-core-493210
+   # FIREBASE_CREDENTIALS_PATH=/path/to/service-account-key.json
+   # OR
+   # FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
    ```
 
 4. **Start the development server:**
@@ -261,10 +287,108 @@ ForensikGaji/
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `GEMINI_API_KEY` | Google Gemini API key for AI reasoning | `AIzaSy...` |
-| `DOC_AI_PROJECT_ID` | Google Cloud Project ID | `my-project-123` |
+| `DOC_AI_PROJECT_ID` | Google Cloud Project ID | `forensikgaji-core-493210` |
 | `DOC_AI_LOCATION` | Document AI processor region | `asia-southeast1` |
 | `DOC_AI_PROCESSOR_ID` | Document AI processor ID | `abc-123-def-456` |
 | `GCS_BUCKET_NAME` | Cloud Storage bucket name | `forensikgaji-uploads` |
+| `FIREBASE_PROJECT_ID` | Firebase Project ID (optional) | `forensikgaji-core-493210` |
+| `FIREBASE_CREDENTIALS_PATH` | Path to service account JSON (optional) | `/path/to/key.json` |
+
+---
+
+## Firebase/Firestore Setup
+
+ForensikGaji uses Firebase Firestore for persistent storage of audit cases. Without Firestore configured, the app falls back to JSON file storage.
+
+### Step 1: Create Firebase Project
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Click **"Add project"** or **"Create a project"**
+3. Enter project name (e.g., `forensikgaji`)
+4. Disable Google Analytics (optional for hackathon)
+5. Click **"Create project"**
+
+### Step 2: Create Firestore Database
+
+1. In the left sidebar, go to **Build** → **Firestore Database**
+2. Click **"Create database"**
+3. Choose location: `asia-southeast1` (recommended for Malaysia)
+4. Select **"Start in Test Mode"** (for development)
+5. Click **"Enable"**
+
+**Note:** Create **Firestore Database**, NOT Realtime Database.
+
+### Step 3: Get Your Project ID
+
+1. Click the **gear icon** ⚙️ → **Project settings**
+2. Copy your **Project ID** (e.g., `forensikgaji-core-493210`)
+
+### Step 4: (Optional) Get Service Account Key
+
+For full Firestore access, generate a service account key:
+
+1. In **Project settings**, go to **Service accounts** tab
+2. Click **"Generate new private key"**
+3. Save the JSON file securely
+
+### Step 5: Configure Backend
+
+Add to `server/.env`:
+
+```bash
+# Option A: Using project ID only (limited permissions)
+FIREBASE_PROJECT_ID=forensikgaji-core-493210
+
+# Option B: Using service account key (recommended)
+FIREBASE_CREDENTIALS_PATH=C:\path\to\service-account-key.json
+```
+
+### Step 6: Verify Firestore Connection
+
+After starting the backend, you should see:
+```
+[OK] Firestore initialized from C:\path\to\key.json
+```
+
+If you see:
+```
+[INFO] Firestore credentials not found. Using JSON file storage.
+```
+Then Firestore is not configured and the app will use local JSON storage.
+
+---
+
+### Firestore Data Structure
+
+**Collection:** `cases`
+
+```javascript
+{
+  "id": "req-1234",
+  "name": "Q1 Engineering Intake",
+  "type": "Resume + Payslip",
+  "status": "completed",  // "waiting" | "processing" | "completed"
+  "link": "https://...?upload=req-1234",
+  "data": {
+    "score": 75,
+    "date": "2026-05-10T10:30:00",
+    "clash_detected": false,
+    "files": [
+      {
+        "name": "resume.pdf",
+        "score": 80,
+        "issue": "Document appears authentic",
+        "heatmap": "data:image/png;base64,...",
+        "original": "data:application/pdf;base64,...",
+        "investigation_status": "Unreviewed",
+        "flagged_claims": [...]
+      }
+    ]
+  },
+  "created_at": "2026-05-10T09:00:00",
+  "updated_at": "2026-05-10T10:30:00"
+}
+```
 
 ---
 
@@ -285,25 +409,19 @@ ForensikGaji/
 **Response:**
 ```json
 {
-  "ats_relevancy_score": 85,
+  "trust_score": 85,
   "fraud_probability_score": 100,
   "status_color": "Green",
   "fraud_verdict": "Document appears authentic...",
-  "reconstructed_original_data": "Timeline analysis...",
   "flagged_claims": [
     {
       "claim": "EXACT_QUOTE",
-      "category": "Clarification Needed",
       "hr_note": "Explanation...",
       "interview_question": "Specific question...",
-      "box_hidden": false,
       "x_position": 45.2,
-      "y_position": 23.8,
-      "box_width": 10.5,
-      "box_height": 2.1
+      "y_position": 23.8
     }
   ],
-  "original_document_base64": "data:image/jpeg;base64,...",
   "ela_heatmap_base64": "data:image/jpeg;base64,..."
 }
 ```
@@ -312,7 +430,7 @@ ForensikGaji/
 
 **Endpoint:** `POST /api/book-expert`
 
-**Description:** Create an expert interview booking1.
+**Description:** Create an expert interview booking.
 
 **Request:**
 ```json
@@ -403,6 +521,7 @@ gcloud run deploy forensikgaji-backend --source .
 | **Containerized Deployment** | Consistent environments across dev/staging/prod |
 | **Asynchronous Processing** | Non-blocking I/O for high-throughput scenarios |
 | **Cloud-Native Services** | Leverages GCP's global infrastructure |
+| **Firestore Persistence** | Real-time database with automatic scaling |
 
 ---
 
@@ -428,7 +547,7 @@ We welcome contributions! Please follow these guidelines:
 
 **Competition:** Project 2030: MyAI Future Hackathon 2026
 **Track:** Track 5 - Secure Digital
-**Team:** Whatever Team
+**Team:** Whatever
 **Date:** May 2026
 
 ---
@@ -443,6 +562,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Google Cloud** - Cloud Platform credits and support
 - **Gemini AI Team** - For the powerful 2.5 Flash model
+- **Firebase Team** - Cloud-native database solution
 - **OpenCV Community** - Computer vision tools and documentation
 - **FastAPI Contributors** - Excellent web framework
 
