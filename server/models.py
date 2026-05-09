@@ -9,8 +9,71 @@ Author: ForensikGaji Team
 Created: May 2026
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
+from datetime import datetime
+
+
+class FlaggedClaim(BaseModel):
+    """A flagged claim with location and interview data."""
+    claim: str = Field(..., description="The suspicious text extracted from the document")
+    hr_note: str = Field(..., description="Explanation of why this claim is suspicious")
+    interview_question: Optional[str] = Field(None, description="Suggested interview question")
+    x_position: Optional[float] = Field(None, description="X coordinate as percentage")
+    y_position: Optional[float] = Field(None, description="Y coordinate as percentage")
+    box_width: Optional[float] = Field(None, description="Width as percentage")
+    box_height: Optional[float] = Field(None, description="Height as percentage")
+    box_hidden: Optional[bool] = Field(False, description="Whether to hide the box in the UI")
+    page_num: Optional[int] = Field(None, description="Page number where claim was found")
+
+
+class FileData(BaseModel):
+    """Data for a single analyzed file."""
+    name: str = Field(..., description="File name")
+    score: int = Field(..., description="Trust score (0-100)")
+    issue: str = Field(..., description="Fraud verdict")
+    flagged_claims: List[FlaggedClaim] = Field(default_factory=list, description="List of flagged claims")
+    heatmap: Optional[str] = Field(None, description="Base64 ELA heatmap")
+    original: Optional[str] = Field(None, description="Base64 original document")
+    investigation_status: Optional[str] = Field("Unreviewed", description="Investigation status")
+
+
+class CaseData(BaseModel):
+    """Data associated with a completed case."""
+    score: int = Field(..., description="Average trust score")
+    date: str = Field(..., description="Analysis date")
+    clash_detected: bool = Field(False, description="Whether conflicts were detected")
+    files: List[FileData] = Field(default_factory=list, description="List of analyzed files")
+
+
+class AuditCase(BaseModel):
+    """An audit case (forensic investigation)."""
+    id: str = Field(..., description="Unique case identifier")
+    name: str = Field(..., description="Case name")
+    type: str = Field(..., description="Document types (e.g., 'Resume + Payslip')")
+    status: str = Field(..., description="Status: 'waiting', 'processing', or 'completed'")
+    link: str = Field(..., description="Candidate upload link")
+    data: Optional[CaseData] = Field(None, description="Case data (when analysis complete)")
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat(), description="Creation timestamp")
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat(), description="Last update timestamp")
+
+
+class CreateCaseRequest(BaseModel):
+    """Request to create a new audit case."""
+    name: str = Field(..., description="Case name")
+    type: str = Field(..., description="Document types requested")
+
+
+class UpdateCaseRequest(BaseModel):
+    """Request to update an audit case."""
+    status: Optional[str] = Field(None, description="New status")
+    data: Optional[CaseData] = Field(None, description="Updated case data")
+    name: Optional[str] = Field(None, description="New case name")
+
+
+class AddFileRequest(BaseModel):
+    """Request to add analysis results to a case."""
+    files: List[FileData] = Field(..., description="List of analyzed files to add")
 
 
 class ScanResponse(BaseModel):
@@ -49,6 +112,18 @@ class ScanResponse(BaseModel):
         default=None,
         description="Base64-encoded ELA heatmap image data URI"
     )
+    flagged_claims: Optional[List[Dict[str, Any]]] = Field(
+        default_factory=list,
+        description="List of flagged claims with coordinates"
+    )
+    fraud_probability_score: Optional[int] = Field(
+        None,
+        description="Alias for trust_score (0-100, higher = more authentic)"
+    )
+    original_document_base64: Optional[str] = Field(
+        default=None,
+        description="Base64-encoded original document"
+    )
 
 
 class ExpertBookingRequest(BaseModel):
@@ -71,7 +146,7 @@ class ExpertBookingRequest(BaseModel):
     expert_email: str = Field(
         ...,
         pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
-        description="Expert's email address for interview invitation"
+        description="Expert's email address for expert invitation"
     )
     interview_date: str = Field(
         ...,

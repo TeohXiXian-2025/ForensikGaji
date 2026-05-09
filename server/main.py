@@ -24,16 +24,26 @@ Hackathon: Project 2030 - MyAI Future (Track 5: Secure Digital)
 import os
 import traceback
 import base64
+from typing import List
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import Pydantic models for request/response validation
-from models import ScanResponse, ExpertBookingRequest, BookingResponse
+from models import (
+    ScanResponse, ExpertBookingRequest, BookingResponse,
+    AuditCase, CreateCaseRequest, UpdateCaseRequest, AddFileRequest,
+    FileData, FlaggedClaim
+)
 
 # Import forensic analysis service modules
 from services.storage import upload_to_gcs
+# Use Firestore storage (falls back to JSON if not configured)
+from services.firestore_storage import (
+    create_case, get_case, get_all_cases, update_case,
+    add_files_to_case, delete_case
+)
 from services.doc_ai import analyze_document
 from services.ela_vision import generate_ela_heatmap
 from services.gemini_agent import generate_verdict_and_questions
@@ -187,6 +197,10 @@ async def scan_document_endpoint(file: UploadFile = File(...)):
         ai_analysis["original_document_base64"] = original_b64
         ai_analysis["ela_heatmap_base64"] = heatmap_b64
 
+        # Ensure response has both fraud_probability_score and trust_score for compatibility
+        if "fraud_probability_score" not in ai_analysis and "trust_score" in ai_analysis:
+            ai_analysis["fraud_probability_score"] = ai_analysis["trust_score"]
+
         print("✅ Analysis Complete! Sending to frontend.")
         return ai_analysis
 
@@ -230,6 +244,190 @@ async def book_expert_endpoint(request: ExpertBookingRequest):
             meet_link=meet_link,
             status_message="Expert Interview successfully booked and calendar invites sent.",
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# CASE MANAGEMENT API ENDPOINTS
+# =============================================================================
+
+@app.post("/api/cases", response_model=AuditCase)
+async def create_audit_case(request: CreateCaseRequest):
+    """
+    Create a new audit case.
+
+    This endpoint creates a new forensic audit case and generates
+    a unique upload link for candidates.
+
+    Args:
+        request: Case creation request with name and document types
+
+    Returns:
+        AuditCase: The newly created case with its upload link
+    """
+    try:
+        # Get the base URL from the request or use default
+        from fastapi import Request
+        # We'll pass the base URL from the frontend, or use a default
+        base_url = "https://forensikgaji-frontend-381516681695.asia-southeast1.run.app"
+
+        # Parse document types from the type string
+        doc_types = [t.strip() for t in request.type.split('+') if t.strip()]
+
+        # Create the case
+        new_case = create_case(request.name, doc_types, base_url)
+
+        return new_case
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cases", response_model=List[AuditCase])
+async def get_all_audit_cases():
+    """
+    Get all audit cases.
+
+    Returns a list of all audit cases in the system.
+
+    Returns:
+        List of all AuditCase objects
+    """
+    try:
+        return get_all_cases()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cases/{case_id}", response_model=AuditCase)
+async def get_audit_case(case_id: str):
+    """
+    Get a specific audit case by ID.
+
+    Args:
+        case_id: Unique case identifier
+
+    Returns:
+        AuditCase: The requested case
+
+    Raises:
+        HTTPException: If case not found
+    """
+    try:
+        case = get_case(case_id)
+        if not case:
+            raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+        return case
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/cases/{case_id}", response_model=AuditCase)
+async def update_audit_case(case_id: str, request: UpdateCaseRequest):
+    """
+    Update an audit case.
+
+    Args:
+        case_id: Unique case identifier
+        request: Update request with fields to update
+
+    Returns:
+        AuditCase: The updated case
+
+    Raises:
+        HTTPException: If case not found
+    """
+    try:
+        # Build updates dict
+        updates = {}
+        if request.status is not None:
+            updates['status'] = request.status
+        if request.name is not None:
+            updates['name'] = request.name
+        if request.data is not None:
+            updates['data'] = request.data.model_dump()
+
+        updated_case = update_case(case_id, **updates)
+        if not updated_case:
+            raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+
+        return updated_case
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/cases/{case_id}")
+async def delete_audit_case(case_id: str):
+    """
+    Delete an audit case.
+
+    Args:
+        case_id: Unique case identifier
+
+    Returns:
+        Success message
+
+    Raises:
+        HTTPException: If case not found
+    """
+    try:
+        success = delete_case(case_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+        return {"message": f"Case {case_id} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/cases/{case_id}/files", response_model=AuditCase)
+async def add_files_to_case_endpoint(case_id: str, request: AddFileRequest):
+    """
+    Add analyzed files to an audit case.
+
+    This endpoint is called by the candidate portal after documents
+    are analyzed to add the results to the case.
+
+    Args:
+        case_id: Unique case identifier
+        request: AddFileRequest with list of analyzed files
+
+    Returns:
+        AuditCase: The updated case with new files
+
+    Raises:
+        HTTPException: If case not found
+    """
+    try:
+        # Convert Pydantic models to dicts if needed
+        files_data = [f.model_dump() if isinstance(f, FileData) else f for f in request.files]
+
+        # Convert to FileData objects if they're dicts
+        file_objects = []
+        for f in files_data:
+            if isinstance(f, dict):
+                # Handle flagged_claims
+                if 'flagged_claims' in f and isinstance(f['flagged_claims'], list):
+                    f['flagged_claims'] = [
+                        FlaggedClaim(**claim) if isinstance(claim, dict) else claim
+                        for claim in f['flagged_claims']
+                    ]
+                file_objects.append(FileData(**f))
+            else:
+                file_objects.append(f)
+
+        updated_case = add_files_to_case(case_id, file_objects)
+        if not updated_case:
+            raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+
+        return updated_case
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
