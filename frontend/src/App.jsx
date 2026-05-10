@@ -339,7 +339,8 @@ export default function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessingHRUpload, setIsProcessingHRUpload] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [isClosed, setIsClosed] = useState(false); 
+  const [isClosed, setIsClosed] = useState(false);
+  const [lastUploadCompletionTime, setLastUploadCompletionTime] = useState(0); 
   
   const [sessionUploadedFiles, setSessionUploadedFiles] = useState([]);
   const [candidateCustomName, setCandidateCustomName] = useState('');
@@ -388,6 +389,13 @@ export default function App() {
     // Don't refresh if currently uploading to prevent overwriting local changes
     if (isUploading || isProcessingHRUpload) {
       console.log("Skipping refresh during upload to preserve local changes");
+      return;
+    }
+
+    // Don't refresh immediately after upload completion to give Firestore time to sync
+    const timeSinceUpload = Date.now() - lastUploadCompletionTime;
+    if (timeSinceUpload < 5000) { // 5 second buffer after upload
+      console.log(`Skipping refresh, waiting for Firestore sync (${5000 - timeSinceUpload}ms remaining)`);
       return;
     }
 
@@ -677,6 +685,7 @@ export default function App() {
       setContainers(prev => Array.isArray(prev) ? prev.filter(c => c && c.id !== newId) : []);
     } finally {
       setIsProcessingHRUpload(false);
+      setLastUploadCompletionTime(Date.now()); // Track when upload completed
     }
   };
 
@@ -736,7 +745,14 @@ export default function App() {
         const updatedCase = await addFilesToCase(activeCandidateUploadId, uploadedFilesData);
         setContainers(prev => {
           const safePrev = Array.isArray(prev) ? prev : [];
-          return safePrev.map(c => c?.id === activeCandidateUploadId ? updatedCase : c);
+          const newContainers = safePrev.map(c => c?.id === activeCandidateUploadId ? updatedCase : c);
+          // Save to localStorage to preserve uploaded files
+          try {
+            localStorage.setItem('forensikGajiCases', JSON.stringify(newContainers));
+          } catch (e) {
+            console.warn("Failed to save to localStorage:", e);
+          }
+          return newContainers;
         });
       } catch (apiError) {
         console.error("API upload failed, using local fallback:", apiError);
@@ -783,9 +799,10 @@ export default function App() {
           return newContainers;
         });
       }
-      
+
       setIsUploading(false);
       setUploadSuccess(true);
+      setLastUploadCompletionTime(Date.now()); // Track when upload completed
       
       if (anyFraud) {
         setToastMessage(`🚨 High Risk Alert: Critical anomaly detected in candidate upload.`);
