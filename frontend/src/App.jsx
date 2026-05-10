@@ -927,6 +927,7 @@ export default function App() {
   };
 
   const handleFileDelete = async (containerId, fileName) => {
+    console.log("handleFileDelete: Deleting file", fileName, "from case", containerId);
     setIsUpdatingCase(true);
     let updatedCase = null;
     setContainers(prev => {
@@ -936,6 +937,7 @@ export default function App() {
              const newScore = newFiles.length > 0 ? Math.round(newFiles.reduce((acc, f) => acc + f.score, 0) / newFiles.length) : 0;
              const updated = { ...con, data: { ...con.data, files: newFiles, score: newScore } };
              updatedCase = updated;
+             console.log("handleFileDelete: Updated case after delete:", { id: containerId, remainingFiles: newFiles.length, newScore });
              return updated;
           }
           return con;
@@ -945,10 +947,14 @@ export default function App() {
 
     if (updatedCase && updatedCase.data) {
        try {
+         console.log("handleFileDelete: Calling API to update case:", containerId);
          await updateCase(containerId, { data: updatedCase.data });
+         console.log("handleFileDelete: API update successful");
        } catch (e) {
          console.error("Failed to sync deleted file:", e);
        }
+    } else {
+       console.error("handleFileDelete: updatedCase or updatedCase.data is null!");
     }
     setLastUpdateTime(Date.now());
     setIsUpdatingCase(false);
