@@ -1865,7 +1865,11 @@ export default function App() {
     const isHighRisk = activeFile.score < 40;
 
     const originalUrl = getOriginalDocument(activeFile);
-    const isPdfPreview = viewMode === 'original' && (originalUrl?.startsWith('data:application/pdf') || originalUrl?.toLowerCase()?.endsWith('.pdf'));
+    // Check if it's a PDF (handles both base64 and GCS URLs with query params)
+    const isPdfPreview = viewMode === 'original' && (
+      originalUrl?.startsWith('data:application/pdf') ||
+      originalUrl?.toLowerCase()?.includes('.pdf')
+    );
 
     return (
       <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4 lg:p-8">
@@ -1961,7 +1965,12 @@ export default function App() {
                   <div className="max-w-4xl mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.15)] bg-white border border-gray-300 rounded-lg relative overflow-hidden">
                       {viewMode === 'original' ? (
                           isPdfPreview ? (
-                              <iframe src={getOriginalDocument(activeFile)} className="w-full border-none" title="PDF Preview" style={{ height: '80vh' }} />
+                              <iframe
+                                src={`https://docs.google.com/viewer?url=${encodeURIComponent(getOriginalDocument(activeFile))}&embedded=true`}
+                                className="w-full border-none"
+                                title="PDF Preview"
+                                style={{ height: '80vh' }}
+                              />
                           ) : (
                               <img src={getOriginalDocument(activeFile)} alt="Original Document" className="w-full h-auto block" />
                           )
