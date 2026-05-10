@@ -1,0 +1,22 @@
+# Ignore local environment files - use Cloud Run env vars instead
+.env
+google-credentials.json
+*.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

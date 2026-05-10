@@ -283,6 +283,26 @@ async def create_audit_case(request: CreateCaseRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/health")
+async def health_check():
+    """
+    Health check endpoint to verify environment configuration.
+    Useful for debugging Cloud Run deployment issues.
+    """
+    import os
+    return {
+        "status": "healthy",
+        "environment": {
+            "GCS_BUCKET_NAME": os.getenv("GCS_BUCKET_NAME", "NOT_SET"),
+            "DOC_AI_PROJECT_ID": os.getenv("DOC_AI_PROJECT_ID", "NOT_SET"),
+            "DOC_AI_LOCATION": os.getenv("DOC_AI_LOCATION", "NOT_SET"),
+            "DOC_AI_PROCESSOR_ID": os.getenv("DOC_AI_PROCESSOR_ID", "NOT_SET"),
+            "FIREBASE_PROJECT_ID": os.getenv("FIREBASE_PROJECT_ID", "NOT_SET"),
+            "GOOGLE_APPLICATION_CREDENTIALS": os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "NOT_SET"),
+        }
+    }
+
+
 @app.get("/api/cases", response_model=List[AuditCase])
 async def get_all_audit_cases():
     """
