@@ -632,6 +632,13 @@ export default function App() {
 
     setIsProcessingHRUpload(true);
 
+    // Create the case in Firestore first
+    try {
+      await createCase(newContainerName, finalTypes.length > 0 ? finalTypes.join(' + ') : 'Direct Upload', 'https://forensikgaji-frontend-381516681695.asia-southeast1.run.app');
+    } catch (apiError) {
+      console.error("Failed to create case in Firestore, continuing with local state:", apiError);
+    }
+
     const tempContainer = {
       id: newId,
       name: newContainerName,
@@ -2837,7 +2844,7 @@ export default function App() {
                      <label className="block text-sm font-bold text-gray-700 mb-2">Select Files to Share</label>
                      <div className="max-h-40 overflow-y-auto space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
                         {safeContainers.find(c => c.id === selectedShareCase)?.data?.files.map(f => (
-                           <label key={f.name} className="flex items-center space-x-3 text-slate-200 text-sm cursor-pointer">
+                           <label key={f.name} className="flex items-center space-x-3 text-gray-700 text-sm cursor-pointer">
                               <input type="checkbox" checked={selectedShareFiles.includes(f.name)} onChange={(e) => {
                                  if (e.target.checked) setSelectedShareFiles([...selectedShareFiles, f.name]);
                                  else setSelectedShareFiles(selectedShareFiles.filter(name => name !== f.name));
@@ -2889,7 +2896,7 @@ export default function App() {
                   </div>
                   <div className="mb-4">
                      <span className="text-sm font-medium text-gray-600 uppercase tracking-wider block mb-2">Interview Notes</span>
-                     <p className="text-slate-200 text-sm leading-relaxed">{viewFeedbackModal.feedback.comments}</p>
+                     <p className="text-gray-700 text-sm leading-relaxed">{viewFeedbackModal.feedback.comments}</p>
                   </div>
                   <div>
                      <span className="text-sm font-medium text-gray-600 uppercase tracking-wider block mb-2">Recommendation</span>
