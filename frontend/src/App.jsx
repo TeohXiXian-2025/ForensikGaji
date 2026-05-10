@@ -628,13 +628,16 @@ export default function App() {
     if (!newContainerName.trim() || directFiles.length === 0) return;
 
     const finalTypes = newContainerTypes.map(t => t === 'Other' && otherDocType.trim() ? otherDocType.trim() : t).filter(t => t !== 'Other' || otherDocType.trim());
-    const newId = `req-${Math.floor(1000 + Math.random() * 9000)}`;
 
     setIsProcessingHRUpload(true);
 
-    // Create the case in Firestore first
+    // Create the case in Firestore first and get the actual case ID
+    let newId = `req-${Math.floor(1000 + Math.random() * 9000)}`; // fallback ID
+
     try {
-      await createCase(newContainerName, finalTypes.length > 0 ? finalTypes.join(' + ') : 'Direct Upload', 'https://forensikgaji-frontend-381516681695.asia-southeast1.run.app');
+      const createdCase = await createCase(newContainerName, finalTypes.length > 0 ? finalTypes : ['Direct Upload']);
+      newId = createdCase.id;
+      console.log("Case created with ID:", newId);
     } catch (apiError) {
       console.error("Failed to create case in Firestore, continuing with local state:", apiError);
     }
@@ -1787,7 +1790,13 @@ export default function App() {
                      </div>
 
                      {b.status === 'Not Shared' && (
-                        <button onClick={() => { setShareCaseModal(b); setSelectedShareCase(''); setSelectedShareFiles([]); setShareMessage(''); }} className="w-full md:w-auto bg-gray-100 hover:bg-gray-200 text-cyan-600 border border-gray-300 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors">
+                        <button onClick={async () => {
+                           await refreshData();
+                           setShareCaseModal(b);
+                           setSelectedShareCase('');
+                           setSelectedShareFiles([]);
+                           setShareMessage('');
+                        }} className="w-full md:w-auto bg-gray-100 hover:bg-gray-200 text-cyan-600 border border-gray-300 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors">
                            Share Audit Case
                         </button>
                      )}
