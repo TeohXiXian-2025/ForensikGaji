@@ -1881,10 +1881,10 @@ export default function App() {
     const isHighRisk = activeFile.score < 40;
 
     const originalUrl = getOriginalDocument(activeFile);
-    // Check if it's a PDF (handles both base64 and GCS URLs with query params)
+    // Check if it's a PDF (data URI or URL ending with .pdf before query params)
     const isPdfPreview = viewMode === 'original' && (
       originalUrl?.startsWith('data:application/pdf') ||
-      originalUrl?.toLowerCase()?.includes('.pdf')
+      (originalUrl && !originalUrl.startsWith('data:') && originalUrl.split('?')[0].toLowerCase().endsWith('.pdf'))
     );
 
     return (
