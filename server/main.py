@@ -197,14 +197,14 @@ async def scan_document_endpoint(file: UploadFile = File(...)):
         print("Uploading analysis artifacts to GCS...")
 
         # Upload original document to GCS
+        # Note: original_b64 from generate_ela_heatmap() is always an image (JPG), even for PDF input
         original_url = None
         if original_b64:
             try:
-                original_ext = "jpg" if mime_type.startswith("image/") else "pdf"
                 original_url = upload_base64_to_gcs(
                     original_b64,
-                    f"original_{file.filename}.{original_ext}",
-                    mime_type
+                    f"original_{file.filename}.jpg",
+                    "image/jpeg"
                 )
                 print(f"✅ Original uploaded to GCS: {original_url}")
             except Exception as e:
