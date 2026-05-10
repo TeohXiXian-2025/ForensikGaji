@@ -9,20 +9,36 @@ Created: May 2026
 """
 
 import os
+import json
 import uuid
 import base64
 from datetime import timedelta
 
 from google.cloud import storage
+from google.oauth2 import service_account
+
+
+def _get_storage_client():
+    """Get a storage client with appropriate credentials for signing."""
+    # Check if service account JSON is provided
+    service_account_json = os.getenv("GCS_SERVICE_ACCOUNT_JSON")
+
+    if service_account_json:
+        try:
+            # Parse the JSON and create credentials
+            info = json.loads(service_account_json)
+            credentials = service_account.Credentials.from_service_account_info(info)
+            return storage.Client(credentials=credentials)
+        except Exception as e:
+            print(f"[WARN] Failed to create service account credentials: {e}")
+
+    # Fall back to default credentials (works for upload but not signing)
+    return storage.Client()
 
 
 def upload_base64_to_gcs(base64_data: str, filename: str, content_type: str = "image/jpeg") -> str:
     """
     Uploads a base64-encoded file to Google Cloud Storage and returns a signed URL.
-
-    This function is used to upload analysis artifacts like ELA heatmaps
-    and processed documents that need to be persisted and displayed in the frontend.
-    Uses signed URLs to work with uniform bucket-level access enabled.
 
     Args:
         base64_data: Base64-encoded data (with or without data URI prefix)
@@ -30,12 +46,8 @@ def upload_base64_to_gcs(base64_data: str, filename: str, content_type: str = "i
         content_type: MIME type of the file
 
     Returns:
-        str: Signed URL to access the uploaded file (valid for 7 days)
-             Example: "https://storage.googleapis.com/bucket-name/uuid-filename?signature=..."
-             None: If upload fails or base64_data is empty
-
-    Raises:
-        GoogleCloudError: If upload fails
+        str: Signed URL (7 days) or direct URL if signing unavailable
+             None: If upload fails
     """
     bucket_name = os.getenv("GCS_BUCKET_NAME")
     if not bucket_name:
@@ -43,7 +55,7 @@ def upload_base64_to_gcs(base64_data: str, filename: str, content_type: str = "i
         return None
 
     try:
-        client = storage.Client()
+        client = _get_storage_client()
         bucket = client.bucket(bucket_name)
 
         # Generate unique filename
@@ -52,7 +64,6 @@ def upload_base64_to_gcs(base64_data: str, filename: str, content_type: str = "i
 
         # Decode base64 data
         if base64_data and base64_data.startswith("data:"):
-            # Remove data URI prefix (e.g., "data:image/jpeg;base64,")
             base64_data = base64_data.split(",", 1)[1]
 
         if not base64_data:
@@ -63,15 +74,19 @@ def upload_base64_to_gcs(base64_data: str, filename: str, content_type: str = "i
         # Upload to GCS
         blob.upload_from_string(file_bytes, content_type=content_type)
 
-        # Generate a signed URL valid for 7 days (GCS maximum limit)
-        # This works with uniform bucket-level access enabled
-        signed_url = blob.generate_signed_url(
-            expiration=timedelta(days=7),
-            method="GET",
-            version="v4"
-        )
-
-        return signed_url
+        # Try to generate signed URL (requires service account)
+        try:
+            signed_url = blob.generate_signed_url(
+                expiration=timedelta(days=7),
+                method="GET",
+                version="v4"
+            )
+            return signed_url
+        except Exception as sign_err:
+            print(f"[WARN] Cannot generate signed URL: {sign_err}")
+            print("[INFO] Set GCS_SERVICE_ACCOUNT_JSON environment variable for signed URLs")
+            # Return direct URL as fallback
+            return f"https://storage.googleapis.com/{bucket_name}/{safe_filename}"
 
     except Exception as e:
         print(f"[WARN] Failed to upload to GCS: {e}")
