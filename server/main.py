@@ -230,11 +230,12 @@ async def scan_document_endpoint(file: UploadFile = File(...)):
         # =========================================================================
         # STEP 8: Assemble and return the complete forensic report
         # =========================================================================
-        # Use URLs if available, otherwise fall back to base64
+        # Always include both URL (for persistent storage) and base64 (as fallback)
         ai_analysis["original_document_url"] = original_url
         ai_analysis["ela_heatmap_url"] = heatmap_url
-        ai_analysis["original_document_base64"] = original_b64 if not original_url else None
-        ai_analysis["ela_heatmap_base64"] = heatmap_b64 if not heatmap_url else None
+        # Keep base64 as fallback in case URL loading fails
+        ai_analysis["original_document_base64"] = original_b64
+        ai_analysis["ela_heatmap_base64"] = heatmap_b64
 
         # Ensure response has both fraud_probability_score and trust_score for compatibility
         if "fraud_probability_score" not in ai_analysis and "trust_score" in ai_analysis:

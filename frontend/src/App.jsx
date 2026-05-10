@@ -386,13 +386,13 @@ export default function App() {
   
   const claimBoxRef = useRef(null);
 
-  // Helper functions to get image sources (URL or base64 fallback)
+  // Helper functions to get image sources (prefer base64 for reliability)
   const getOriginalDocument = (file) => {
-    return file?.original_document_url || file?.original || null;
+    return file?.original || file?.original_document_url || null;
   };
 
   const getHeatmap = (file) => {
-    return file?.ela_heatmap_url || file?.heatmap || null;
+    return file?.heatmap || file?.ela_heatmap_url || null;
   };
 
   // Function to manually refresh data from API (with localStorage fallback)
