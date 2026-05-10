@@ -403,7 +403,39 @@ export default function App() {
       // Try to fetch from API first
       const apiCases = await fetchAllCases();
       if (apiCases && apiCases.length > 0) {
-        setContainers(apiCases);
+        // Preserve local images when refreshing from API
+        // Firestore doesn't store base64 images due to size limits
+        setContainers(prev => {
+          const localCases = Array.isArray(prev) ? prev : [];
+
+          return apiCases.map(apiCase => {
+            const localCase = localCases.find(lc => lc.id === apiCase.id);
+
+            // If we have local data with images, preserve them
+            if (localCase?.data?.files && apiCase.data?.files) {
+              const mergedFiles = apiCase.data.files.map(apiFile => {
+                const localFile = localCase.data.files.find(lf => lf.name === apiFile.name);
+                // Preserve images from local state
+                return {
+                  ...apiFile,
+                  heatmap: localFile?.heatmap || apiFile.heatmap || null,
+                  original: localFile?.original || apiFile.original || null
+                };
+              });
+
+              return {
+                ...apiCase,
+                data: {
+                  ...apiCase.data,
+                  files: mergedFiles
+                }
+              };
+            }
+
+            return apiCase;
+          });
+        });
+
         // Also update localStorage as cache
         try {
           localStorage.setItem('forensikGajiCases', JSON.stringify(apiCases));
@@ -745,14 +777,46 @@ export default function App() {
         const updatedCase = await addFilesToCase(activeCandidateUploadId, uploadedFilesData);
         setContainers(prev => {
           const safePrev = Array.isArray(prev) ? prev : [];
-          const newContainers = safePrev.map(c => c?.id === activeCandidateUploadId ? updatedCase : c);
-          // Save to localStorage to preserve uploaded files
-          try {
-            localStorage.setItem('forensikGajiCases', JSON.stringify(newContainers));
-          } catch (e) {
-            console.warn("Failed to save to localStorage:", e);
-          }
-          return newContainers;
+          return safePrev.map(c => {
+            if (c?.id === activeCandidateUploadId) {
+              // Merge API response with local uploadedFilesData to preserve images
+              // Firestore can't store large base64 images, so we keep them locally
+              const apiFiles = updatedCase.data?.files || [];
+              const localFiles = uploadedFilesData;
+
+              // Merge: API metadata + local images
+              const mergedFiles = apiFiles.map(apiFile => {
+                const localFile = localFiles.find(lf => lf.name === apiFile.name);
+                return {
+                  ...apiFile,
+                  heatmap: localFile?.heatmap || null,
+                  original: localFile?.original || null,
+                  // Preserve local investigation status if set
+                  investigation_status: apiFile.investigation_status || 'Unreviewed'
+                };
+              });
+
+              const mergedCase = {
+                ...updatedCase,
+                data: {
+                  ...updatedCase.data,
+                  files: mergedFiles
+                }
+              };
+
+              // Save to localStorage to preserve uploaded files
+              try {
+                localStorage.setItem('forensikGajiCases', JSON.stringify(
+                  safePrev.map(tc => tc?.id === activeCandidateUploadId ? mergedCase : tc)
+                ));
+              } catch (e) {
+                console.warn("Failed to save to localStorage:", e);
+              }
+
+              return mergedCase;
+            }
+            return c;
+          });
         });
       } catch (apiError) {
         console.error("API upload failed, using local fallback:", apiError);

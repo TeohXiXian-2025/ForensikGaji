@@ -249,6 +249,17 @@ def add_files_to_case(case_id: str, files: List[FileData]) -> Optional[AuditCase
             files=files
         )
 
+    # Remove large base64 fields to avoid Firestore 1MB limit
+    # Only keep metadata and analysis results
+    for file_item in case_data.files:
+        if hasattr(file_item, 'heatmap'):
+            file_item.heatmap = None
+        if hasattr(file_item, 'original'):
+            file_item.original = None
+        if isinstance(file_item, dict):
+            file_item.pop('heatmap', None)
+            file_item.pop('original', None)
+
     return update_case(case_id, data=case_data, status="completed")
 
 
