@@ -63,10 +63,10 @@ def upload_base64_to_gcs(base64_data: str, filename: str, content_type: str = "i
         # Upload to GCS
         blob.upload_from_string(file_bytes, content_type=content_type)
 
-        # Generate a signed URL valid for 30 days
+        # Generate a signed URL valid for 7 days (GCS maximum limit)
         # This works with uniform bucket-level access enabled
         signed_url = blob.generate_signed_url(
-            expiration=timedelta(days=30),
+            expiration=timedelta(days=7),
             method="GET",
             version="v4"
         )
