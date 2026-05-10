@@ -1028,7 +1028,7 @@ export default function App() {
                 return (
                   <button
                     key={type}
-                    onClick={() => setAuditCaseTypeFilter(type)}
+                    onClick={() => { setAuditCaseTypeFilter(type); setActiveAuditCase(null); }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                       auditCaseTypeFilter === type
                         ? 'bg-cyan-50 text-cyan-700 border border-cyan-200'
@@ -1800,17 +1800,18 @@ export default function App() {
   };
 
   const renderAuditCaseDetailView = () => {
-    if (!activeAuditCase) return null;
-    const c = activeAuditCase;
+    try {
+      if (!activeAuditCase) return null;
+      const c = activeAuditCase;
 
-    if (!c || typeof c !== 'object') {
-      return (
-        <div className="p-8 text-center">
-          <p className="text-gray-500">Invalid case data. Please go back and try again.</p>
-          <button onClick={() => setActiveAuditCase(null)} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">Go Back</button>
-        </div>
-      );
-    }
+      if (!c || typeof c !== 'object') {
+        return (
+          <div className="p-8 text-center">
+            <p className="text-gray-500">Invalid case data. Please go back and try again.</p>
+            <button onClick={() => setActiveAuditCase(null)} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">Go Back</button>
+          </div>
+        );
+      }
 
     const allFiles = Array.isArray(c.data?.files) ? c.data.files : [];
 
