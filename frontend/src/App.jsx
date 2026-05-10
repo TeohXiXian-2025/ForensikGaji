@@ -2004,6 +2004,15 @@ export default function App() {
         )}
       </div>
     );
+    } catch (error) {
+      console.error("Error rendering audit case detail view:", error);
+      return (
+        <div className="p-8 text-center">
+          <p className="text-red-500">Error loading case details. Please go back.</p>
+          <button onClick={() => setActiveAuditCase(null)} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">Go Back</button>
+        </div>
+      );
+    }
   };
 
   const renderExpertDetailModal = () => {
