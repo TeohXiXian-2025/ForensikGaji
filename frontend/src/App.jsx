@@ -333,10 +333,11 @@ export default function App() {
   const [newContainerTypes, setNewContainerTypes] = useState(['Resume']); 
   const [otherDocType, setOtherDocType] = useState(''); 
   
-  const [selectedContainer, setSelectedContainer] = useState(null); 
-  const [activeCandidateUploadId, setActiveCandidateUploadId] = useState(isExternalLink ? new URLSearchParams(window.location.search).get('upload') : null); 
-  
+  const [selectedContainer, setSelectedContainer] = useState(null);
+  const [activeCandidateUploadId, setActiveCandidateUploadId] = useState(isExternalLink ? new URLSearchParams(window.location.search).get('upload') : null);
+
   const [isUploading, setIsUploading] = useState(false);
+  const [isProcessingHRUpload, setIsProcessingHRUpload] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isClosed, setIsClosed] = useState(false); 
   
@@ -384,6 +385,12 @@ export default function App() {
 
   // Function to manually refresh data from API (with localStorage fallback)
   const refreshData = async () => {
+    // Don't refresh if currently uploading to prevent overwriting local changes
+    if (isUploading || isProcessingHRUpload) {
+      console.log("Skipping refresh during upload to preserve local changes");
+      return;
+    }
+
     try {
       // Try to fetch from API first
       const apiCases = await fetchAllCases();
@@ -422,9 +429,9 @@ export default function App() {
     }
   };
 
-  // Auto-poll for updates every 10 seconds when on dashboard
+  // Auto-poll for updates every 10 seconds when on dashboard or audit cases
   useEffect(() => {
-    if (activeTab === 'scanner' || activeTab === 'new_entry') {
+    if (activeTab === 'scanner' || activeTab === 'new_entry' || activeTab === 'audit_cases') {
       const interval = setInterval(() => {
         refreshData();
       }, 10000); // Poll every 10 seconds
@@ -562,7 +569,9 @@ export default function App() {
 
     const finalTypes = newContainerTypes.map(t => t === 'Other' && otherDocType.trim() ? otherDocType.trim() : t).filter(t => t !== 'Other' || otherDocType.trim());
     const newId = `req-${Math.floor(1000 + Math.random() * 9000)}`;
-    
+
+    setIsProcessingHRUpload(true);
+
     const tempContainer = {
       id: newId,
       name: newContainerName,
@@ -571,7 +580,7 @@ export default function App() {
       link: `https://forensikgaji-frontend-381516681695.asia-southeast1.run.app/?upload=${newId}`,
       data: null
     };
-    
+
     setContainers(prev => {
       const safePrev = Array.isArray(prev) ? prev : [];
       const newContainers = [tempContainer, ...safePrev];
@@ -582,7 +591,7 @@ export default function App() {
       } catch(e) {}
       return newContainers;
     });
-    
+
     const filesToProcess = [...directFiles];
     setNewContainerName('');
     setDirectFiles([]);
@@ -595,7 +604,7 @@ export default function App() {
       for (const file of filesToProcess) {
         const formData = new FormData();
         formData.append("file", file);
-        
+
         const response = await fetch("https://forensikgaji-backend-381516681695.asia-southeast1.run.app/api/scan-document", {
           method: "POST",
           body: formData,
@@ -665,7 +674,9 @@ export default function App() {
     } catch (error) {
       console.error("Backend error:", error);
       alert("Backend connection failed. Please check Python console.");
-      setContainers(prev => Array.isArray(prev) ? prev.filter(c => c && c.id !== newId) : []); 
+      setContainers(prev => Array.isArray(prev) ? prev.filter(c => c && c.id !== newId) : []);
+    } finally {
+      setIsProcessingHRUpload(false);
     }
   };
 
