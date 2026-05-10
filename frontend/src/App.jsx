@@ -433,9 +433,11 @@ export default function App() {
             if (localCase?.data?.files && apiCase.data?.files) {
               const mergedFiles = apiCase.data.files.map(apiFile => {
                 const localFile = localCase.data.files.find(lf => lf.name === apiFile.name);
-                // Preserve images from local state
+                // Preserve images from local state (prefer URL fields)
                 return {
                   ...apiFile,
+                  ela_heatmap_url: localFile?.ela_heatmap_url || apiFile.ela_heatmap_url || null,
+                  original_document_url: localFile?.original_document_url || apiFile.original_document_url || null,
                   heatmap: localFile?.heatmap || apiFile.heatmap || null,
                   original: localFile?.original || apiFile.original || null
                 };
@@ -811,8 +813,10 @@ export default function App() {
                 const localFile = localFiles.find(lf => lf.name === apiFile.name);
                 return {
                   ...apiFile,
-                  heatmap: localFile?.heatmap || null,
-                  original: localFile?.original || null,
+                  ela_heatmap_url: localFile?.ela_heatmap_url || apiFile.ela_heatmap_url || null,
+                  original_document_url: localFile?.original_document_url || apiFile.original_document_url || null,
+                  heatmap: localFile?.heatmap || apiFile.heatmap || null,
+                  original: localFile?.original || apiFile.original || null,
                   // Preserve local investigation status if set
                   investigation_status: apiFile.investigation_status || 'Unreviewed'
                 };
@@ -1130,10 +1134,10 @@ export default function App() {
           </ul>
         ` : '<p style="color: #64748b; font-style: italic;">No anomalies detected in this document.</p>'}
 
-        ${f.heatmap ? `
+        ${f.ela_heatmap_url || f.heatmap ? `
           <div style="margin-top: 30px; text-align: center; page-break-inside: avoid;">
             <h4 style="color: #ef4444; margin-bottom: 10px; font-size: 18px;">Forensic ELA Heatmap (Tampering Highlighted)</h4>
-            
+
             <div style="background: #fff; border: 2px solid #ef4444; border-radius: 8px; padding: 15px; display: inline-block; box-shadow: 0 4px 6px rgba(239,68,68,0.1); width: 100%; box-sizing: border-box;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #fee2e2; padding-bottom: 10px;">
                     <div style="text-align: left;">
@@ -1147,16 +1151,16 @@ export default function App() {
                 </div>
 
                 <div style="position: relative; display: block; width: 100%; margin: 0 auto;">
-                    <img src="${f.heatmap}" style="width: 100%; height: auto; display: block; border-radius: 4px; border: 1px solid #cbd5e1;" />
+                    <img src="${f.ela_heatmap_url || f.heatmap}" style="width: 100%; height: auto; display: block; border-radius: 4px; border: 1px solid #cbd5e1;" />
                 </div>
-                
+
                 <p style="font-size: 10px; color: #ef4444; margin-top: 10px; font-style: italic;">Note: Highlights indicate pixel compression inconsistencies commonly caused by digital splicing or copy-pasting new text over original documents.</p>
             </div>
           </div>
-        ` : f.original ? `
+        ` : f.original_document_url || f.original ? `
            <div style="margin-top: 30px; text-align: center; page-break-inside: avoid;">
             <h4 style="color: #334155; margin-bottom: 10px;">Original Document Scan</h4>
-            <img src="${f.original}" style="max-width: 100%; border: 1px solid #cbd5e1; border-radius: 8px;" />
+            <img src="${f.original_document_url || f.original}" style="max-width: 100%; border: 1px solid #cbd5e1; border-radius: 8px;" />
           </div>
         ` : ''}
       </div>
@@ -1860,7 +1864,8 @@ export default function App() {
     const activeFile = report.files[selectedFileIndex] || report.files[0];
     const isHighRisk = activeFile.score < 40;
 
-    const isPdfPreview = viewMode === 'original' && (getOriginalDocument(activeFile)?.startsWith('data:application/pdf') || getOriginalDocument(activeFile)?.toLowerCase()?.endsWith('.pdf'));
+    const originalUrl = getOriginalDocument(activeFile);
+    const isPdfPreview = viewMode === 'original' && (originalUrl?.startsWith('data:application/pdf') || originalUrl?.toLowerCase()?.endsWith('.pdf'));
 
     return (
       <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4 lg:p-8">
@@ -1956,13 +1961,13 @@ export default function App() {
                   <div className="max-w-4xl mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.15)] bg-white border border-gray-300 rounded-lg relative overflow-hidden">
                       {viewMode === 'original' ? (
                           isPdfPreview ? (
-                              <iframe src={activeFile.original} className="w-full border-none" title="PDF Preview" style={{ height: '80vh' }} />
+                              <iframe src={getOriginalDocument(activeFile)} className="w-full border-none" title="PDF Preview" style={{ height: '80vh' }} />
                           ) : (
-                              <img src={activeFile.original} alt="Original Document" className="w-full h-auto block" />
+                              <img src={getOriginalDocument(activeFile)} alt="Original Document" className="w-full h-auto block" />
                           )
                       ) : (
-                          activeFile.heatmap ? (
-                              <img src={activeFile.heatmap} alt="ELA Heatmap Overlay" className="w-full h-auto block bg-white" />
+                          getHeatmap(activeFile) ? (
+                              <img src={getHeatmap(activeFile)} alt="ELA Heatmap Overlay" className="w-full h-auto block bg-white" />
                           ) : (
                               <div className="flex items-center justify-center p-20 text-gray-500 font-bold text-center bg-gray-50 border border-gray-200 rounded-lg">
                                   Heatmap Analysis Unavailable.<br/>Document is likely purely digital (Resume) or could not be processed.
