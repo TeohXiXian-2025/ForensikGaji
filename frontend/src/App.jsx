@@ -928,62 +928,82 @@ export default function App() {
 
   const handleFileDelete = async (containerId, fileName) => {
     console.log("handleFileDelete: Deleting file", fileName, "from case", containerId);
+    console.log("handleFileDelete: Current containers:", containers.map(c => ({ id: c.id, name: c.name, hasData: !!c.data, fileCount: c.data?.files?.length || 0 })));
     setIsUpdatingCase(true);
-    let updatedCase = null;
-    setContainers(prev => {
-       const result = prev.map(con => {
-          if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
-             const newFiles = con.data.files.filter(f => f.name !== fileName);
-             const newScore = newFiles.length > 0 ? Math.round(newFiles.reduce((acc, f) => acc + f.score, 0) / newFiles.length) : 0;
-             const updated = { ...con, data: { ...con.data, files: newFiles, score: newScore } };
-             updatedCase = updated;
-             console.log("handleFileDelete: Updated case after delete:", { id: containerId, remainingFiles: newFiles.length, newScore });
-             return updated;
-          }
-          return con;
-       });
-       return result;
-    });
 
-    if (updatedCase && updatedCase.data) {
-       try {
-         console.log("handleFileDelete: Calling API to update case:", containerId);
-         await updateCase(containerId, { data: updatedCase.data });
-         console.log("handleFileDelete: API update successful");
-       } catch (e) {
-         console.error("Failed to sync deleted file:", e);
-       }
-    } else {
-       console.error("handleFileDelete: updatedCase or updatedCase.data is null!");
+    // First find and prepare the updated case
+    const caseToUpdate = containers.find(c => c.id === containerId);
+    if (!caseToUpdate) {
+      console.error("handleFileDelete: Case not found:", containerId);
+      setIsUpdatingCase(false);
+      return;
     }
+
+    if (!caseToUpdate.data || !Array.isArray(caseToUpdate.data.files)) {
+      console.error("handleFileDelete: Case has no data or files:", caseToUpdate);
+      setIsUpdatingCase(false);
+      return;
+    }
+
+    const newFiles = caseToUpdate.data.files.filter(f => f.name !== fileName);
+    const newScore = newFiles.length > 0 ? Math.round(newFiles.reduce((acc, f) => acc + f.score, 0) / newFiles.length) : 0;
+    const updatedCase = { ...caseToUpdate, data: { ...caseToUpdate.data, files: newFiles, score: newScore } };
+
+    console.log("handleFileDelete: Updated case prepared:", { id: containerId, remainingFiles: newFiles.length, newScore });
+
+    // Update local state
+    setContainers(prev => prev.map(con => con.id === containerId ? updatedCase : con));
+
+    // Sync to backend
+    try {
+      console.log("handleFileDelete: Calling API to update case:", containerId);
+      await updateCase(containerId, { data: updatedCase.data });
+      console.log("handleFileDelete: API update successful");
+    } catch (e) {
+      console.error("Failed to sync deleted file:", e);
+    }
+
     setLastUpdateTime(Date.now());
     setIsUpdatingCase(false);
   };
 
   const handleUpdateFileStatus = async (containerId, fileName, status) => {
+    console.log("handleUpdateFileStatus: Updating file", fileName, "status to", status, "in case", containerId);
     setIsUpdatingCase(true);
-    let updatedCase = null;
-    setContainers(prev => {
-       const result = prev.map(con => {
-          if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
-             const updated = { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === fileName ? { ...f, investigation_status: status } : f) } };
-             updatedCase = updated;
-             return updated;
-          }
-          return con;
-       });
-       return result;
-    });
 
-    if (updatedCase && updatedCase.data) {
-       try {
-         console.log("handleUpdateFileStatus: Updating case", containerId, "with file status:", fileName, "=", status);
-         await updateCase(containerId, { data: updatedCase.data });
-         console.log("handleUpdateFileStatus: API update successful");
-       } catch (e) {
-         console.error("Failed to sync investigation status:", e);
-       }
+    // Find and prepare the updated case
+    const caseToUpdate = containers.find(c => c.id === containerId);
+    if (!caseToUpdate) {
+      console.error("handleUpdateFileStatus: Case not found:", containerId);
+      setIsUpdatingCase(false);
+      return;
     }
+
+    if (!caseToUpdate.data || !Array.isArray(caseToUpdate.data.files)) {
+      console.error("handleUpdateFileStatus: Case has no data or files:", caseToUpdate);
+      setIsUpdatingCase(false);
+      return;
+    }
+
+    const updatedFiles = caseToUpdate.data.files.map(f =>
+      f.name === fileName ? { ...f, investigation_status: status } : f
+    );
+    const updatedCase = { ...caseToUpdate, data: { ...caseToUpdate.data, files: updatedFiles } };
+
+    console.log("handleUpdateFileStatus: Updated case prepared");
+
+    // Update local state
+    setContainers(prev => prev.map(con => con.id === containerId ? updatedCase : con));
+
+    // Sync to backend
+    try {
+      console.log("handleUpdateFileStatus: Calling API");
+      await updateCase(containerId, { data: updatedCase.data });
+      console.log("handleUpdateFileStatus: API update successful");
+    } catch (e) {
+      console.error("Failed to sync investigation status:", e);
+    }
+
     setLastUpdateTime(Date.now());
     setIsUpdatingCase(false);
   };
@@ -993,47 +1013,50 @@ export default function App() {
     if (!fileToRename || !renameValue || renameValue.trim() === "") return;
 
     const newName = renameValue.trim();
+    console.log("confirmFileRename: Renaming file at index", fileToRename.origIdx, "to", newName, "in case", fileToRename.containerId);
     setIsUpdatingCase(true);
 
-    try {
-      // Update local state first for immediate feedback
-      setContainers(prev => {
-         const safePrev = Array.isArray(prev) ? prev : [];
-         return safePrev.map(c => {
-           if (c.id === fileToRename.containerId) {
-              const files = Array.isArray(c.data?.files) ? [...c.data.files] : [];
-              if (files[fileToRename.origIdx]) {
-                 files[fileToRename.origIdx] = {
-                   ...files[fileToRename.origIdx],
-                   name: newName
-                 };
-              }
-              return {
-                 ...c,
-                 data: {
-                    ...c.data,
-                    files
-                 }
-              };
-           }
-           return c;
-         });
-      });
+    // Find and prepare the updated case
+    const caseToUpdate = containers.find(c => c.id === fileToRename.containerId);
+    if (!caseToUpdate) {
+      console.error("confirmFileRename: Case not found:", fileToRename.containerId);
+      setIsUpdatingCase(false);
+      setFileToRename(null);
+      return;
+    }
 
-      // Persist to backend
-      const container = containers.find(c => c.id === fileToRename.containerId);
-      if (container) {
-        const files = Array.isArray(container.data?.files) ? [...container.data.files] : [];
-        if (files[fileToRename.origIdx]) {
-          files[fileToRename.origIdx] = {
-            ...files[fileToRename.origIdx],
-            name: newName
-          };
-          console.log("confirmFileRename: Updating case", fileToRename.containerId, "with new file name:", newName);
-          await updateCase(fileToRename.containerId, { data: { ...container.data, files } });
-          console.log("confirmFileRename: API update successful");
-        }
-      }
+    if (!caseToUpdate.data || !Array.isArray(caseToUpdate.data.files)) {
+      console.error("confirmFileRename: Case has no data or files:", caseToUpdate);
+      setIsUpdatingCase(false);
+      setFileToRename(null);
+      return;
+    }
+
+    if (!caseToUpdate.data.files[fileToRename.origIdx]) {
+      console.error("confirmFileRename: File index", fileToRename.origIdx, "not found in case");
+      setIsUpdatingCase(false);
+      setFileToRename(null);
+      return;
+    }
+
+    // Create updated files array with renamed file
+    const updatedFiles = [...caseToUpdate.data.files];
+    updatedFiles[fileToRename.origIdx] = {
+      ...updatedFiles[fileToRename.origIdx],
+      name: newName
+    };
+    const updatedCase = { ...caseToUpdate, data: { ...caseToUpdate.data, files: updatedFiles } };
+
+    console.log("confirmFileRename: Updated case prepared");
+
+    // Update local state
+    setContainers(prev => prev.map(con => con.id === fileToRename.containerId ? updatedCase : con));
+
+    // Sync to backend
+    try {
+      console.log("confirmFileRename: Calling API");
+      await updateCase(fileToRename.containerId, { data: updatedCase.data });
+      console.log("confirmFileRename: API update successful");
     } catch (error) {
       console.error("Failed to rename file via API:", error);
     }
