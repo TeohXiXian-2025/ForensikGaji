@@ -340,6 +340,8 @@ export default function App() {
   const [isProcessingHRUpload, setIsProcessingHRUpload] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
+  const [isUpdatingCase, setIsUpdatingCase] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
   const [lastUploadCompletionTime, setLastUploadCompletionTime] = useState(0); 
   
   const [sessionUploadedFiles, setSessionUploadedFiles] = useState([]);
@@ -387,8 +389,8 @@ export default function App() {
   // Function to manually refresh data from API (with localStorage fallback)
   const refreshData = async () => {
     // Don't refresh if currently uploading to prevent overwriting local changes
-    if (isUploading || isProcessingHRUpload) {
-      console.log("Skipping refresh during upload to preserve local changes");
+    if (isUploading || isProcessingHRUpload || isUpdatingCase) {
+      console.log("Skipping refresh during upload/update to preserve local changes");
       return;
     }
 
@@ -396,6 +398,13 @@ export default function App() {
     const timeSinceUpload = Date.now() - lastUploadCompletionTime;
     if (timeSinceUpload < 5000) { // 5 second buffer after upload
       console.log(`Skipping refresh, waiting for Firestore sync (${5000 - timeSinceUpload}ms remaining)`);
+      return;
+    }
+
+    // Don't refresh immediately after case update (rename/delete) to give Firestore time to sync
+    const timeSinceUpdate = Date.now() - lastUpdateTime;
+    if (timeSinceUpdate < 3000) { // 3 second buffer after update
+      console.log(`Skipping refresh, waiting for Firestore sync (${3000 - timeSinceUpdate}ms remaining)`);
       return;
     }
 
@@ -881,6 +890,7 @@ export default function App() {
   };
 
   const confirmDelete = async () => {
+    setIsUpdatingCase(true);
     try {
       await deleteCase(containerToDelete);
       setContainers(prev => Array.isArray(prev) ? prev.filter(c => c && c.id !== containerToDelete) : []);
@@ -890,6 +900,8 @@ export default function App() {
       setContainers(prev => Array.isArray(prev) ? prev.filter(c => c && c.id !== containerToDelete) : []);
       setContainerToDelete(null);
     }
+    setLastUpdateTime(Date.now());
+    setIsUpdatingCase(false);
   };
 
   const openRenameModal = (id, currentName) => {
@@ -900,6 +912,7 @@ export default function App() {
   const confirmRename = async (e) => {
     e.preventDefault();
     if (renameValue && renameValue.trim() !== "") {
+      setIsUpdatingCase(true);
       try {
         await updateCase(containerToRename, { name: renameValue });
         setContainers(prev => Array.isArray(prev) ? prev.map(c => c && c.id === containerToRename ? { ...c, name: renameValue } : c) : []);
@@ -907,8 +920,64 @@ export default function App() {
         console.error("Failed to rename case via API, using local fallback:", error);
         setContainers(prev => Array.isArray(prev) ? prev.map(c => c && c.id === containerToRename ? { ...c, name: renameValue } : c) : []);
       }
+      setLastUpdateTime(Date.now());
+      setIsUpdatingCase(false);
     }
     setContainerToRename(null);
+  };
+
+  const handleFileDelete = async (containerId, fileName) => {
+    setIsUpdatingCase(true);
+    let updatedCase = null;
+    setContainers(prev => {
+       const result = prev.map(con => {
+          if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
+             const newFiles = con.data.files.filter(f => f.name !== fileName);
+             const newScore = newFiles.length > 0 ? Math.round(newFiles.reduce((acc, f) => acc + f.score, 0) / newFiles.length) : 0;
+             const updated = { ...con, data: { ...con.data, files: newFiles, score: newScore } };
+             updatedCase = updated;
+             return updated;
+          }
+          return con;
+       });
+       return result;
+    });
+
+    if (updatedCase && updatedCase.data) {
+       try {
+         await updateCase(containerId, { data: updatedCase.data });
+       } catch (e) {
+         console.error("Failed to sync deleted file:", e);
+       }
+    }
+    setLastUpdateTime(Date.now());
+    setIsUpdatingCase(false);
+  };
+
+  const handleUpdateFileStatus = async (containerId, fileName, status) => {
+    setIsUpdatingCase(true);
+    let updatedCase = null;
+    setContainers(prev => {
+       const result = prev.map(con => {
+          if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
+             const updated = { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === fileName ? { ...f, investigation_status: status } : f) } };
+             updatedCase = updated;
+             return updated;
+          }
+          return con;
+       });
+       return result;
+    });
+
+    if (updatedCase && updatedCase.data) {
+       try {
+         await updateCase(containerId, { data: updatedCase.data });
+       } catch (e) {
+         console.error("Failed to sync investigation status:", e);
+       }
+    }
+    setLastUpdateTime(Date.now());
+    setIsUpdatingCase(false);
   };
 
   const confirmFileRename = async (e) => {
@@ -916,6 +985,7 @@ export default function App() {
     if (!fileToRename || !renameValue || renameValue.trim() === "") return;
 
     const newName = renameValue.trim();
+    setIsUpdatingCase(true);
 
     try {
       // Update local state first for immediate feedback
@@ -958,6 +1028,8 @@ export default function App() {
       console.error("Failed to rename file via API:", error);
     }
 
+    setLastUpdateTime(Date.now());
+    setIsUpdatingCase(false);
     setFileToRename(null);
   };
 
@@ -1363,52 +1435,8 @@ export default function App() {
                 onViewReport={(container, fileIdx) => { setSelectedContainer(container); setViewMode('original'); setSelectedFileIndex(fileIdx); setActiveAnomaly(null); }}
                 onCopyLink={copyToClipboard}
                 onOpenPortal={(id) => { setActiveCandidateUploadId(id); setActiveTab('candidate_portal'); }}
-                onUpdateFileStatus={async (containerId, fileName, status) => {
-                   let updatedCase = null;
-                   setContainers(prev => {
-                      const result = prev.map(con => {
-                         if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
-                            const updated = { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === fileName ? { ...f, investigation_status: status } : f) } };
-                            updatedCase = updated;
-                            return updated;
-                         }
-                         return con;
-                      });
-                      return result;
-                   });
-
-                   if (updatedCase && updatedCase.data) {
-                      try {
-                        await updateCase(containerId, { data: updatedCase.data });
-                      } catch (e) {
-                        console.error("Failed to sync investigation status:", e);
-                      }
-                   }
-                }}
-                onDeleteFile={async (containerId, fileName) => {
-                   let updatedCase = null;
-                   setContainers(prev => {
-                      const result = prev.map(con => {
-                         if (con.id === containerId && con.data && Array.isArray(con.data.files)) {
-                            const newFiles = con.data.files.filter(f => f.name !== fileName);
-                            const newScore = newFiles.length > 0 ? Math.round(newFiles.reduce((acc, f) => acc + f.score, 0) / newFiles.length) : 0;
-                            const updated = { ...con, data: { ...con.data, files: newFiles, score: newScore } };
-                            updatedCase = updated;
-                            return updated;
-                         }
-                         return con;
-                      });
-                      return result;
-                   });
-
-                   if (updatedCase && updatedCase.data) {
-                      try {
-                         await updateCase(containerId, { data: updatedCase.data });
-                      } catch (e) {
-                        console.error("Failed to sync deleted file:", e);
-                      }
-                   }
-                }}
+                onUpdateFileStatus={handleUpdateFileStatus}
+                onDeleteFile={handleFileDelete}
                 onRenameFile={(containerId, origIdx, currentName) => {
                    setFileToRename({ containerId, origIdx });
                    setRenameValue(currentName);
@@ -1809,8 +1837,9 @@ export default function App() {
                   {isHighRisk && (
                     <select
                       value={activeFile.investigation_status || 'Unreviewed'}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const newStatus = e.target.value;
+                        setIsUpdatingCase(true);
                         setContainers(prev => prev.map(con => {
                            if (con.id === selectedContainer.id && con.data && Array.isArray(con.data.files)) {
                               return { ...con, data: { ...con.data, files: con.data.files.map(f => f.name === activeFile.name ? { ...f, investigation_status: newStatus } : f) } };
@@ -1821,6 +1850,13 @@ export default function App() {
                            if (!prev) return prev;
                            return { ...prev, data: { ...prev.data, files: prev.data.files.map(f => f.name === activeFile.name ? { ...f, investigation_status: newStatus } : f) } };
                         });
+                        try {
+                          await updateCase(selectedContainer.id, { data: selectedContainer.data });
+                        } catch (e) {
+                          console.error("Failed to sync status:", e);
+                        }
+                        setLastUpdateTime(Date.now());
+                        setIsUpdatingCase(false);
                       }}
                       className={`text-xs w-48 rounded-md px-2 py-1 outline-none border font-bold shadow-sm transition-colors cursor-pointer ${
                         activeFile.investigation_status === 'Investigated - Fraud' ? 'bg-red-100 text-red-600 border-red-200' :
@@ -2045,6 +2081,7 @@ export default function App() {
                           onChange={async (e) => {
                             const newStatus = e.target.value;
                             let updatedData = null;
+                            setIsUpdatingCase(true);
 
                             setContainers(prev => prev.map(con => {
                               if (con.id === c.id && con.data && Array.isArray(con.data.files)) {
@@ -2068,6 +2105,8 @@ export default function App() {
                                 console.error("Failed to sync status:", e);
                               }
                             }
+                            setLastUpdateTime(Date.now());
+                            setIsUpdatingCase(false);
                           }}
                           className={`text-xs rounded-md px-2 py-1.5 outline-none border font-medium ${
                             file.investigation_status === 'Investigated - Fraud' ? 'bg-red-100 text-red-700 border-red-300' :
