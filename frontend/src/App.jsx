@@ -847,32 +847,53 @@ export default function App() {
     setContainerToRename(null);
   };
 
-  const confirmFileRename = (e) => {
+  const confirmFileRename = async (e) => {
     e.preventDefault();
     if (!fileToRename || !renameValue || renameValue.trim() === "") return;
-    
-    setContainers(prev => {
-       const safePrev = Array.isArray(prev) ? prev : [];
-       return safePrev.map(c => {
-         if (c.id === fileToRename.containerId) {
-            const files = Array.isArray(c.data?.files) ? [...c.data.files] : [];
-            if (files[fileToRename.origIdx]) {
-               files[fileToRename.origIdx] = {
-                 ...files[fileToRename.origIdx],
-                 name: renameValue.trim()
-               };
-            }
-            return {
-               ...c,
-               data: {
-                  ...c.data,
-                  files
-               }
-            };
-         }
-         return c;
-       });
-    });
+
+    const newName = renameValue.trim();
+
+    try {
+      // Update local state first for immediate feedback
+      setContainers(prev => {
+         const safePrev = Array.isArray(prev) ? prev : [];
+         return safePrev.map(c => {
+           if (c.id === fileToRename.containerId) {
+              const files = Array.isArray(c.data?.files) ? [...c.data.files] : [];
+              if (files[fileToRename.origIdx]) {
+                 files[fileToRename.origIdx] = {
+                   ...files[fileToRename.origIdx],
+                   name: newName
+                 };
+              }
+              return {
+                 ...c,
+                 data: {
+                    ...c.data,
+                    files
+                 }
+              };
+           }
+           return c;
+         });
+      });
+
+      // Persist to backend
+      const container = containers.find(c => c.id === fileToRename.containerId);
+      if (container) {
+        const files = Array.isArray(container.data?.files) ? [...container.data.files] : [];
+        if (files[fileToRename.origIdx]) {
+          files[fileToRename.origIdx] = {
+            ...files[fileToRename.origIdx],
+            name: newName
+          };
+          await updateCase(fileToRename.containerId, { data: { ...container.data, files } });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to rename file via API:", error);
+    }
+
     setFileToRename(null);
   };
 
