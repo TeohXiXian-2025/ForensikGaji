@@ -403,8 +403,8 @@ export default function App() {
 
     // Don't refresh immediately after case update (rename/delete) to give Firestore time to sync
     const timeSinceUpdate = Date.now() - lastUpdateTime;
-    if (timeSinceUpdate < 3000) { // 3 second buffer after update
-      console.log(`Skipping refresh, waiting for Firestore sync (${3000 - timeSinceUpdate}ms remaining)`);
+    if (timeSinceUpdate < 10000) { // 10 second buffer after update
+      console.log(`Skipping refresh, waiting for Firestore sync (${10000 - timeSinceUpdate}ms remaining)`);
       return;
     }
 
@@ -971,7 +971,9 @@ export default function App() {
 
     if (updatedCase && updatedCase.data) {
        try {
+         console.log("handleUpdateFileStatus: Updating case", containerId, "with file status:", fileName, "=", status);
          await updateCase(containerId, { data: updatedCase.data });
+         console.log("handleUpdateFileStatus: API update successful");
        } catch (e) {
          console.error("Failed to sync investigation status:", e);
        }
@@ -1021,7 +1023,9 @@ export default function App() {
             ...files[fileToRename.origIdx],
             name: newName
           };
+          console.log("confirmFileRename: Updating case", fileToRename.containerId, "with new file name:", newName);
           await updateCase(fileToRename.containerId, { data: { ...container.data, files } });
+          console.log("confirmFileRename: API update successful");
         }
       }
     } catch (error) {
