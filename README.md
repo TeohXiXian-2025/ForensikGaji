@@ -61,6 +61,7 @@ ForensikGaji leverages multi-layered forensic analysis combining computer vision
 | **Hybrid Ingestion Methods** | Secure "Audit Links" for candidates + "Direct HR Uploads" for immediate batch processing |
 | **Expert Marketplace Integration** | Vetted ecosystem of technical leads—book experts directly from high-risk audit cases |
 | **Firestore Data Persistence** | Cloud-native database storage for audit cases with real-time sync |
+| **GCS Artifact Storage** | Persistent storage for ELA heatmaps and processed documents with public URL access |
 
 ### User Interface
 
@@ -159,7 +160,8 @@ ForensikGaji/
 │   │   ├── ela_vision.py        # ELA heatmap generation
 │   │   ├── fraud_engine.py      # Metadata & semantic analysis
 │   │   ├── gemini_agent.py      # Gemini AI reasoning layer
-│   │   ├── storage.py           # GCS upload logic
+│   │   ├── storage.py           # GCS upload logic for raw documents
+│   │   ├── image_storage.py     # GCS upload logic for analysis artifacts
 │   │   ├── firestore_storage.py # Firestore database operations
 │   │   ├── case_storage.py      # JSON fallback storage
 │   │   └── workspace.py         # Google Workspace integration (mock)
@@ -192,6 +194,7 @@ ForensikGaji/
 | OpenCV | 4.13.0 | Computer Vision |
 | PyWavelets | 1.4.1+ | Wavelet Decomposition |
 | Firebase Admin | 6.5.0 | Firestore Integration |
+| google-cloud-storage | Latest | GCS Artifact Storage |
 
 ### Google Cloud Services
 | Service | Purpose |
@@ -378,8 +381,10 @@ Then Firestore is not configured and the app will use local JSON storage.
         "name": "resume.pdf",
         "score": 80,
         "issue": "Document appears authentic",
-        "heatmap": "data:image/png;base64,...",
-        "original": "data:application/pdf;base64,...",
+        "ela_heatmap_url": "https://storage.googleapis.com/.../heatmap.jpg",
+        "original_document_url": "https://storage.googleapis.com/.../original.pdf",
+        "heatmap": null,
+        "original": null,
         "investigation_status": "Unreviewed",
         "flagged_claims": [...]
       }
@@ -389,6 +394,8 @@ Then Firestore is not configured and the app will use local JSON storage.
   "updated_at": "2026-05-10T10:30:00"
 }
 ```
+
+**Note:** Base64 fields (`heatmap`, `original`) are removed before Firestore storage to stay under the 1MB document limit. URL fields (`*_url`) are used instead for efficient frontend access.
 
 ---
 
@@ -422,7 +429,10 @@ Then Firestore is not configured and the app will use local JSON storage.
       "y_position": 23.8
     }
   ],
-  "ela_heatmap_base64": "data:image/jpeg;base64,..."
+  "ela_heatmap_url": "https://storage.googleapis.com/.../heatmap.jpg",
+  "original_document_url": "https://storage.googleapis.com/.../original.pdf",
+  "ela_heatmap_base64": "data:image/jpeg;base64,...",
+  "original_document_base64": "data:application/pdf;base64,..."
 }
 ```
 
@@ -522,6 +532,8 @@ gcloud run deploy forensikgaji-backend --source .
 | **Asynchronous Processing** | Non-blocking I/O for high-throughput scenarios |
 | **Cloud-Native Services** | Leverages GCP's global infrastructure |
 | **Firestore Persistence** | Real-time database with automatic scaling |
+| **GCS Artifact Storage** | Persistent storage for analysis artifacts with public URL access |
+| **Base64 Fallback** | Graceful degradation if GCS upload fails |
 
 ---
 

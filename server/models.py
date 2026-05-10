@@ -33,8 +33,10 @@ class FileData(BaseModel):
     score: int = Field(..., description="Trust score (0-100)")
     issue: str = Field(..., description="Fraud verdict")
     flagged_claims: List[FlaggedClaim] = Field(default_factory=list, description="List of flagged claims")
-    heatmap: Optional[str] = Field(None, description="Base64 ELA heatmap")
-    original: Optional[str] = Field(None, description="Base64 original document")
+    ela_heatmap_url: Optional[str] = Field(None, description="GCS URL for ELA heatmap")
+    original_document_url: Optional[str] = Field(None, description="GCS URL for original document")
+    heatmap: Optional[str] = Field(None, description="Base64 ELA heatmap (fallback)")
+    original: Optional[str] = Field(None, description="Base64 original document (fallback)")
     investigation_status: Optional[str] = Field("Unreviewed", description="Investigation status")
 
 
@@ -112,6 +114,10 @@ class ScanResponse(BaseModel):
         default=None,
         description="Base64-encoded ELA heatmap image data URI"
     )
+    ela_heatmap_url: Optional[str] = Field(
+        default=None,
+        description="GCS URL for ELA heatmap (preferred over base64)"
+    )
     flagged_claims: Optional[List[Dict[str, Any]]] = Field(
         default_factory=list,
         description="List of flagged claims with coordinates"
@@ -123,6 +129,10 @@ class ScanResponse(BaseModel):
     original_document_base64: Optional[str] = Field(
         default=None,
         description="Base64-encoded original document"
+    )
+    original_document_url: Optional[str] = Field(
+        default=None,
+        description="GCS URL for original document (preferred over base64)"
     )
 
 

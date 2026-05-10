@@ -386,6 +386,15 @@ export default function App() {
   
   const claimBoxRef = useRef(null);
 
+  // Helper functions to get image sources (URL or base64 fallback)
+  const getOriginalDocument = (file) => {
+    return file?.original_document_url || file?.original || null;
+  };
+
+  const getHeatmap = (file) => {
+    return file?.ela_heatmap_url || file?.heatmap || null;
+  };
+
   // Function to manually refresh data from API (with localStorage fallback)
   const refreshData = async () => {
     // Don't refresh if currently uploading to prevent overwriting local changes
@@ -666,6 +675,8 @@ export default function App() {
           score: result.fraud_probability_score,
           issue: result.fraud_verdict,
           flagged_claims: result.flagged_claims,
+          ela_heatmap_url: result.ela_heatmap_url,
+          original_document_url: result.original_document_url,
           heatmap: result.ela_heatmap_base64,
           original: result.original_document_base64
         });
@@ -772,6 +783,8 @@ export default function App() {
           score: result.fraud_probability_score,
           issue: result.fraud_verdict,
           flagged_claims: result.flagged_claims,
+          ela_heatmap_url: result.ela_heatmap_url,
+          original_document_url: result.original_document_url,
           heatmap: result.ela_heatmap_base64,
           original: result.original_document_base64
         });
@@ -1847,7 +1860,7 @@ export default function App() {
     const activeFile = report.files[selectedFileIndex] || report.files[0];
     const isHighRisk = activeFile.score < 40;
 
-    const isPdfPreview = viewMode === 'original' && (activeFile.original?.startsWith('data:application/pdf') || activeFile.original?.toLowerCase().endsWith('.pdf'));
+    const isPdfPreview = viewMode === 'original' && (getOriginalDocument(activeFile)?.startsWith('data:application/pdf') || getOriginalDocument(activeFile)?.toLowerCase()?.endsWith('.pdf'));
 
     return (
       <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-3xl z-50 flex items-center justify-center p-4 lg:p-8">

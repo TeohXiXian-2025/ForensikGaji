@@ -250,13 +250,21 @@ def add_files_to_case(case_id: str, files: List[FileData]) -> Optional[AuditCase
         )
 
     # Remove large base64 fields to avoid Firestore 1MB limit
-    # Only keep metadata and analysis results
+    # Keep URL fields (original_document_url, ela_heatmap_url) for frontend access
     for file_item in case_data.files:
+        # Remove base64 fields (large), keep URL fields (small)
+        if hasattr(file_item, 'original_document_base64'):
+            file_item.original_document_base64 = None
+        if hasattr(file_item, 'ela_heatmap_base64'):
+            file_item.ela_heatmap_base64 = None
         if hasattr(file_item, 'heatmap'):
             file_item.heatmap = None
         if hasattr(file_item, 'original'):
             file_item.original = None
+
         if isinstance(file_item, dict):
+            file_item.pop('original_document_base64', None)
+            file_item.pop('ela_heatmap_base64', None)
             file_item.pop('heatmap', None)
             file_item.pop('original', None)
 

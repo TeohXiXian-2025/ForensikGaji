@@ -48,6 +48,7 @@ from services.doc_ai import analyze_document
 from services.ela_vision import generate_ela_heatmap
 from services.gemini_agent import generate_verdict_and_questions
 from services.workspace import create_expert_interview_meet
+from services.image_storage import upload_base64_to_gcs
 
 # Import fraud detection engine functions
 from services.fraud_engine import (
@@ -191,11 +192,49 @@ async def scan_document_endpoint(file: UploadFile = File(...)):
             heatmap_b64 = None
 
         # =========================================================================
+        # STEP 7.5: Upload images to GCS for persistent storage
+        # =========================================================================
+        print("Uploading analysis artifacts to GCS...")
+
+        # Upload original document to GCS
+        original_url = None
+        if original_b64:
+            try:
+                original_ext = "jpg" if mime_type.startswith("image/") else "pdf"
+                original_url = upload_base64_to_gcs(
+                    original_b64,
+                    f"original_{file.filename}.{original_ext}",
+                    mime_type
+                )
+                print(f"✅ Original uploaded to GCS: {original_url}")
+            except Exception as e:
+                print(f"⚠️ Failed to upload original to GCS: {e}")
+                # Keep base64 as fallback
+                pass
+
+        # Upload heatmap to GCS
+        heatmap_url = None
+        if heatmap_b64:
+            try:
+                heatmap_url = upload_base64_to_gcs(
+                    heatmap_b64,
+                    f"heatmap_{file.filename}.jpg",
+                    "image/jpeg"
+                )
+                print(f"✅ Heatmap uploaded to GCS: {heatmap_url}")
+            except Exception as e:
+                print(f"⚠️ Failed to upload heatmap to GCS: {e}")
+                # Keep base64 as fallback
+                pass
+
+        # =========================================================================
         # STEP 8: Assemble and return the complete forensic report
         # =========================================================================
-        # Inject the base64-encoded images into the response
-        ai_analysis["original_document_base64"] = original_b64
-        ai_analysis["ela_heatmap_base64"] = heatmap_b64
+        # Use URLs if available, otherwise fall back to base64
+        ai_analysis["original_document_url"] = original_url
+        ai_analysis["ela_heatmap_url"] = heatmap_url
+        ai_analysis["original_document_base64"] = original_b64 if not original_url else None
+        ai_analysis["ela_heatmap_base64"] = heatmap_b64 if not heatmap_url else None
 
         # Ensure response has both fraud_probability_score and trust_score for compatibility
         if "fraud_probability_score" not in ai_analysis and "trust_score" in ai_analysis:
