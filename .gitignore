@@ -8,6 +8,8 @@
 !*credentials-example*.json
 *secret*.json
 forensikgaji-core-493210-firebase-adminsdk-fbsvc-9f66a091e7.json
+key.json
+key_oneline.json
 
 # ========================
 # BACKEND (PYTHON / FASTAPI)
