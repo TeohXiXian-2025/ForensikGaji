@@ -44,9 +44,9 @@ def generate_ela_heatmap(file_bytes: bytes, mime_type: str) -> tuple:
             - heatmap_image_b64: Data URI of the heatmap with annotations
 
     Output Visual Indicators:
-        - Orange boxes: Wavelet-detected pixel anomalies
         - Red boxes: ELA-detected compression inconsistencies
         - Red boxes + "VECTOR INJECTION" label: Detected vector text overlay
+        - Orange boxes (pixel anomalies): Hidden by default
 
     Example:
         >>> file = open("document.pdf", "rb").read()
@@ -141,14 +141,15 @@ def generate_ela_heatmap(file_bytes: bytes, mime_type: str) -> tuple:
                 w_contours, _ = cv2.findContours(w_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                 # Draw orange boxes around wavelet-detected anomalies
-                for c in w_contours:
-                    area = cv2.contourArea(c)
-                    # Filter by area to ignore noise and very large regions
-                    if 300 < area < 10000:
-                        x, y, w, h = cv2.boundingRect(c)
-                        cv2.rectangle(output_img, (x, y), (x + w, y + h), (0, 165, 255), 3)  # Orange
-                        cv2.putText(output_img, "PIXEL ANOMALY", (x, y - 8),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 165, 255), 2)
+                # DISABLED: Hide pixel anomaly boxes
+                # for c in w_contours:
+                #     area = cv2.contourArea(c)
+                #     # Filter by area to ignore noise and very large regions
+                #     if 300 < area < 10000:
+                #         x, y, w, h = cv2.boundingRect(c)
+                #         cv2.rectangle(output_img, (x, y), (x + w, y + h), (0, 165, 255), 3)  # Orange
+                #         cv2.putText(output_img, "PIXEL ANOMALY", (x, y - 8),
+                #                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 165, 255), 2)
 
                 # =========================================================
                 # B: STANDARD ELA (JPEG Compression Artifact Detection)
@@ -249,13 +250,14 @@ def generate_ela_heatmap(file_bytes: bytes, mime_type: str) -> tuple:
         w_dilated = cv2.dilate(w_thresh, np.ones((5, 5), np.uint8), iterations=2)
         w_contours, _ = cv2.findContours(w_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        for c in w_contours:
-            area = cv2.contourArea(c)
-            if 300 < area < 10000:
-                x, y, w, h = cv2.boundingRect(c)
-                cv2.rectangle(output_img, (x, y), (x + w, y + h), (0, 165, 255), 3)
-                cv2.putText(output_img, "PIXEL ANOMALY", (x, y - 8),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 165, 255), 2)
+        # DISABLED: Hide pixel anomaly boxes for images
+        # for c in w_contours:
+        #     area = cv2.contourArea(c)
+        #     if 300 < area < 10000:
+        #         x, y, w, h = cv2.boundingRect(c)
+        #         cv2.rectangle(output_img, (x, y), (x + w, y + h), (0, 165, 255), 3)
+        #         cv2.putText(output_img, "PIXEL ANOMALY", (x, y - 8),
+        #                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 165, 255), 2)
 
         # ------------------------------------------------------------
         # STANDARD ELA (same as PDF path)
